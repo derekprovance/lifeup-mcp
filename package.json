@@ -1,0 +1,36 @@
+{
+  "name": "lifeup-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP Server for LifeUp Cloud API integration with Claude",
+  "type": "module",
+  "main": "build/index.js",
+  "bin": {
+    "lifeup-mcp": "build/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "start": "node build/index.js",
+    "dev": "tsx watch src/index.ts",
+    "inspect": "node build/index.js"
+  },
+  "keywords": [
+    "mcp",
+    "lifeup",
+    "task-management",
+    "claude"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.0"
+  }
+}
