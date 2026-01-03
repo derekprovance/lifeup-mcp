@@ -11,10 +11,12 @@ export const CreateTaskSchema = z.object({
     .max(200, 'Task name cannot exceed 200 characters'),
   exp: z.number().nonnegative('Experience points must be non-negative').optional(),
   coin: z.number().nonnegative('Coin reward must be non-negative').optional(),
-  categoryId: z.number().positive('Category ID must be positive').optional(),
+  coinVar: z.number().nonnegative('Coin variance must be non-negative').optional(),
+  categoryId: z.number().nonnegative('Category ID must be non-negative').optional(),
   deadline: z.number().positive('Deadline must be a valid timestamp').optional(),
   skillIds: z
     .array(z.number().positive('Skill IDs must be positive'))
+    .max(20, 'Cannot specify more than 20 skills')
     .optional(),
   content: z.string().max(1000, 'Task content cannot exceed 1000 characters').optional(),
 });

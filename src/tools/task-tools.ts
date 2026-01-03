@@ -48,7 +48,11 @@ export class TaskTools {
         `✓ Task created successfully!\n\n` +
         `**Task**: ${validated.name}\n` +
         `**Experience**: ${validated.exp || 0} XP\n` +
-        `**Coin Reward**: ${validated.coin || 0}\n` +
+        `**Coin Reward**: ${validated.coin || 0}` +
+        (validated.coinVar ? ` (+/- ${validated.coinVar})` : '') +
+        `\n` +
+        (validated.categoryId !== undefined ? `**Category ID**: ${validated.categoryId}\n` : '') +
+        (validated.skillIds?.length ? `**Skills**: ${validated.skillIds.join(', ')}\n` : '') +
         (validated.content ? `**Description**: ${validated.content}\n` : '') +
         (validated.deadline
           ? `**Deadline**: ${new Date(validated.deadline).toLocaleString()}\n`

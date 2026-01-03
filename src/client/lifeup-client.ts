@@ -6,7 +6,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { configManager } from '../config/config.js';
 import { ErrorHandler, LifeUpError } from '../error/error-handler.js';
-import { API_ENDPOINTS, RESPONSE_CODE } from './constants.js';
+import { API_ENDPOINTS, RESPONSE_CODE, LIFEUP_URL_SCHEMES } from './constants.js';
 import * as Types from './types.js';
 
 export class LifeUpClient {
@@ -93,13 +93,16 @@ export class LifeUpClient {
    */
   private buildTaskUrl(request: Types.CreateTaskRequest): string {
     const params = new URLSearchParams();
-    params.append('name', request.name);
+    params.append('todo', request.name);
 
     if (request.exp !== undefined) {
       params.append('exp', String(request.exp));
     }
     if (request.coin !== undefined) {
       params.append('coin', String(request.coin));
+    }
+    if (request.coinVar !== undefined) {
+      params.append('coin_var', String(request.coinVar));
     }
     if (request.categoryId !== undefined) {
       params.append('category', String(request.categoryId));
@@ -108,15 +111,15 @@ export class LifeUpClient {
       params.append('deadline', String(request.deadline));
     }
     if (request.content !== undefined) {
-      params.append('content', request.content);
+      params.append('notes', request.content);
     }
     if (request.skillIds !== undefined && request.skillIds.length > 0) {
       request.skillIds.forEach(id => {
-        params.append('skill', String(id));
+        params.append('skills', String(id));
       });
     }
 
-    return `lifeup://api/task?${params.toString()}`;
+    return `${LIFEUP_URL_SCHEMES.TASK_CREATE}?${params.toString().replace(/\+/g, '%20')}`;
   }
 
   /**

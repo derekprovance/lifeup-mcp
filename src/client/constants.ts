@@ -25,8 +25,8 @@ export const API_ENDPOINTS = {
 } as const;
 
 export const LIFEUP_URL_SCHEMES = {
-  // Task creation format: lifeup://api/task?name=...&exp=...&coin=...
-  TASK_CREATE: 'lifeup://api/task',
+  // Task creation format: lifeup://api/add_task?name=...&exp=...&coin=...
+  TASK_CREATE: 'lifeup://api/add_task',
   // Reward format: lifeup://api/reward?type=coin&content=...&number=...
   REWARD: 'lifeup://api/reward',
 } as const;

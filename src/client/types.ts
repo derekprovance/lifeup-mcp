@@ -127,6 +127,7 @@ export interface CreateTaskRequest {
   name: string;
   exp?: number;
   coin?: number;
+  coinVar?: number;
   categoryId?: number;
   deadline?: number;
   skillIds?: number[];
