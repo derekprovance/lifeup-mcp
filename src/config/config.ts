@@ -3,9 +3,15 @@
  */
 
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
 import { DEFAULT_CONFIG } from '../client/constants.js';
 
-dotenv.config();
+// Load .env file from project root
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const projectRoot = resolve(__dirname, '../../');
+dotenv.config({ path: resolve(projectRoot, '.env') });
 
 export interface LifeUpConfig {
   host: string;

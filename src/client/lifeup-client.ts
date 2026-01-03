@@ -101,11 +101,19 @@ export class LifeUpClient {
     if (request.coin !== undefined) {
       params.append('coin', String(request.coin));
     }
+    if (request.categoryId !== undefined) {
+      params.append('category', String(request.categoryId));
+    }
     if (request.deadline !== undefined) {
       params.append('deadline', String(request.deadline));
     }
     if (request.content !== undefined) {
       params.append('content', request.content);
+    }
+    if (request.skillIds !== undefined && request.skillIds.length > 0) {
+      request.skillIds.forEach(id => {
+        params.append('skill', String(id));
+      });
     }
 
     return `lifeup://api/task?${params.toString()}`;
@@ -116,9 +124,12 @@ export class LifeUpClient {
    */
   private async executeUrlScheme(url: string): Promise<Types.HttpResponse> {
     try {
+      configManager.logIfDebug(`Executing URL scheme via ${API_ENDPOINTS.API_GATEWAY}`, { url });
       const response = await this.axiosInstance.post(API_ENDPOINTS.API_GATEWAY, { url });
+      configManager.logIfDebug(`URL scheme response:`, response.data);
       return response.data;
     } catch (error) {
+      configManager.logIfDebug(`URL scheme error:`, error instanceof AxiosError ? error.message : error);
       if (error instanceof AxiosError) {
         throw ErrorHandler.handleNetworkError(error);
       }

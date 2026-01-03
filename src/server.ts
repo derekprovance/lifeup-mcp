@@ -6,6 +6,7 @@ import {
   Server,
 } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { lifeupClient } from './client/lifeup-client.js';
 import { TaskTools } from './tools/task-tools.js';
@@ -38,12 +39,6 @@ class LifeUpServer {
       method: z.literal('tools/list'),
     });
 
-    const CallToolSchema = z.object({
-      method: z.literal('tools/call'),
-      name: z.string(),
-      arguments: z.record(z.unknown()).optional(),
-    });
-
     // Register tools/list handler
     (this.server.setRequestHandler as any)(
       ListToolsSchema,
@@ -56,16 +51,35 @@ class LifeUpServer {
 
     // Register tools/call handler
     (this.server.setRequestHandler as any)(
-      CallToolSchema,
+      CallToolRequestSchema,
       async (request: any) => {
-        configManager.logIfDebug(`Tool called: ${request.name}`, request.arguments);
+        configManager.logIfDebug(`Tool called: ${request.params.name}`, request.params.arguments);
 
         try {
           let result: string;
 
-          switch (request.name) {
+          switch (request.params.name) {
+            case 'check_lifeup_connection': {
+              const isHealthy = await lifeupClient.healthCheck();
+              const config = configManager.getConfig();
+
+              if (isHealthy) {
+                result = `✓ Successfully connected to LifeUp at ${config.baseUrl}`;
+              } else {
+                result =
+                  `❌ Cannot reach LifeUp device at ${config.baseUrl}\n\n` +
+                  `Troubleshooting steps:\n` +
+                  `1. Make sure LifeUp app is running on the device\n` +
+                  `2. Verify the device is connected to the same network\n` +
+                  `3. Check that the IP address is correct (currently: ${config.host})\n` +
+                  `4. Ensure LifeUp HTTP API is enabled in settings\n\n` +
+                  `Once the device is reachable, try your request again.`;
+              }
+              break;
+            }
+
             case 'create_task':
-              result = await TaskTools.createTask(request.arguments);
+              result = await TaskTools.createTask(request.params.arguments);
               break;
 
             case 'list_all_tasks':
@@ -73,11 +87,11 @@ class LifeUpServer {
               break;
 
             case 'search_tasks':
-              result = await TaskTools.searchTasks(request.arguments);
+              result = await TaskTools.searchTasks(request.params.arguments);
               break;
 
             case 'get_task_history':
-              result = await TaskTools.getTaskHistory(request.arguments);
+              result = await TaskTools.getTaskHistory(request.params.arguments);
               break;
 
             case 'get_task_categories':
@@ -89,7 +103,7 @@ class LifeUpServer {
               break;
 
             case 'match_task_to_achievements':
-              result = await AchievementTools.matchTaskToAchievements(request.arguments);
+              result = await AchievementTools.matchTaskToAchievements(request.params.arguments);
               break;
 
             default:
@@ -97,7 +111,7 @@ class LifeUpServer {
                 content: [
                   {
                     type: 'text',
-                    text: `Unknown tool: ${request.name}`,
+                    text: `Unknown tool: ${request.params.name}`,
                   },
                 ],
                 isError: true,
@@ -133,6 +147,16 @@ class LifeUpServer {
 
   private getTools(): any[] {
     return [
+      {
+        name: 'check_lifeup_connection',
+        description:
+          'Check if the LifeUp device is reachable. Use this to verify connectivity or troubleshoot connection issues. ' +
+          'Returns connection status and helpful information if the device cannot be reached.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+        },
+      },
       {
         name: 'create_task',
         description:
@@ -279,26 +303,69 @@ class LifeUpServer {
 
   async start(): Promise<void> {
     const transport = new StdioServerTransport();
+    const config = configManager.getConfig();
 
     // Log initialization
     configManager.logIfDebug('LifeUp MCP Server starting...');
     configManager.logIfDebug('Configuration:', {
-      baseUrl: configManager.getConfig().baseUrl,
+      baseUrl: config.baseUrl,
       hasApiToken: !!configManager.getApiToken(),
     });
 
-    // Check server health on startup
-    const isHealthy = await lifeupClient.healthCheck();
-    if (!isHealthy) {
-      configManager.logIfDebug(
-        'Warning: LifeUp server unreachable at startup. Server will prompt user when tools are used.'
-      );
+    // Check server health on startup (informational only, don't block startup)
+    const maxRetries = 3;
+    const retryDelayMs = 1000;
+    let isHealthy = false;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      configManager.logIfDebug(`Health check attempt ${attempt}/${maxRetries}...`);
+      isHealthy = await lifeupClient.healthCheck();
+
+      if (isHealthy) {
+        configManager.logIfDebug('Health check passed! LifeUp server is reachable.');
+        break;
+      }
+
+      if (attempt < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      }
     }
 
-    await this.server.connect(transport);
-    configManager.logIfDebug('LifeUp MCP Server connected via stdio transport');
+    if (!isHealthy) {
+      configManager.logIfDebug(
+        `Warning: LifeUp server unreachable at startup (${config.baseUrl}). ` +
+        'Tools will report connection errors until the device is reachable.'
+      );
+      // Don't block startup - let Claude know about connection issues through tool responses
+    } else {
+      configManager.logIfDebug('LifeUp server is reachable and ready.');
+    }
+
+    try {
+      configManager.logIfDebug('Connecting to stdio transport...');
+      await this.server.connect(transport);
+      configManager.logIfDebug('LifeUp MCP Server connected via stdio transport');
+
+      // Keep the server running - connect() should block until disconnected
+      // But add a message to confirm we're running
+      configManager.logIfDebug('LifeUp MCP Server is now ready to handle requests');
+    } catch (error) {
+      console.error('Error during server connection:', error);
+      throw error;
+    }
   }
 }
+
+// Global error handlers to prevent unhandled rejections from crashing
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit, just log the error
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  // Don't exit, just log the error
+});
 
 // Main entry point
 const server = new LifeUpServer();
