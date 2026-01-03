@@ -357,7 +357,7 @@ class LifeUpServer {
         },
       },
       {
-        name: 'match_task_to_achievements',
+        name: 'match_task_to_achievements', //TODO - Test that this skill works properly
         description:
           'Match a task to potentially relevant achievements based on task name and keywords. ' +
           'Helps identify which achievements could be earned by completing specific tasks. ' +
@@ -745,7 +745,7 @@ class LifeUpServer {
         },
       },
       {
-        name: 'add_shop_item',
+        name: 'add_shop_item', //TODO - Test that this skill works properly
         description:
           'Create a new shop item with price, stock, effects, and purchase limits. ' +
           'Items can have custom usage effects like coin rewards, exp bonuses, or special actions.',
@@ -819,7 +819,7 @@ class LifeUpServer {
         },
       },
       {
-        name: 'edit_shop_item',
+        name: 'edit_shop_item', //TODO - Test that this skill works properly
         description:
           'Modify an existing shop item. Can adjust price, stock, owned quantity, effects, and other properties. ' +
           'Supports both absolute setting and relative adjustments for numeric values.',
@@ -892,7 +892,7 @@ class LifeUpServer {
         },
       },
       {
-        name: 'apply_penalty',
+        name: 'apply_penalty', //TODO - Test that this skill works properly
         description:
           'Apply a penalty to the player (coins, experience points, or items) with a custom reason. ' +
           'The reason will be displayed in history pages. Use this to subtract resources directly.',
@@ -934,7 +934,7 @@ class LifeUpServer {
         },
       },
       {
-        name: 'edit_skill',
+        name: 'edit_skill', //TODO - Test that this skill works properly
         description:
           'Create a new skill or edit an existing skill (name, icon, color, experience). ' +
           'Can also delete skills. Skills represent character attributes that can be leveled up.',
