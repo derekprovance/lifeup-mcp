@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**LifeUp MCP Server** is a Model Context Protocol (MCP) server that enables Claude to interact with the LifeUp task management app running on a local Android device. The server acts as a bridge between Claude and LifeUp's HTTP API, exposing 7 tools for task creation, querying, and achievement matching.
+**LifeUp MCP Server** is a Model Context Protocol (MCP) server that enables Claude to interact with the LifeUp task management app running on a local Android device. The server acts as a bridge between Claude and LifeUp's HTTP API, exposing 16 tools for task creation, achievement management, querying, user profile information, and shop browsing.
 
 ## Architecture
 
@@ -44,10 +44,25 @@ LifeUp Cloud API (Android Device)
 - All return formatted markdown strings for Claude
 - Calls `lifeupClient` methods and wraps results in error handling
 
-**tools/achievement-tools.ts** - Achievement querying and matching
+**tools/achievement-tools.ts** - Achievement querying, matching, and management
 - `listAchievements` - Lists achievements with fallback to categories
 - `matchTaskToAchievements` - Keyword-based matching algorithm
+- `createAchievement` - Create new custom achievements with conditions and rewards
+- `updateAchievement` - Update existing achievement properties by ID
+- `deleteAchievement` - Delete achievements by ID
 - Includes helper methods for keyword extraction and confidence scoring
+
+**tools/user-info-tools.ts** - User profile and character information
+- `listSkills` - Lists all skills with levels, experience, and progress to next level
+- `getUserInfo` - Displays player name, character level, version, and total experience
+- `getCoinBalance` - Shows current coin balance and currency information
+- Helps users understand their character progression and economy
+
+**tools/shop-tools.ts** - Shop browsing and item search
+- `listShopItems` - Lists all shop items with prices, stock availability, and owned quantities
+- `getShopCategories` - Lists all shop item categories for organization
+- `searchShopItems` - Filters items by name, category, and price range
+- Enables users to browse and search the shop inventory
 
 **config/config.ts** - Configuration singleton
 - Loads environment variables (LIFEUP_HOST, LIFEUP_PORT, LIFEUP_API_TOKEN, DEBUG)
@@ -55,7 +70,7 @@ LifeUp Cloud API (Android Device)
 - Debug logging utility for troubleshooting
 
 **config/validation.ts** - Zod schemas for input validation
-- `CreateTaskSchema`, `SearchTasksSchema`, `TaskHistorySchema`, `AchievementMatchSchema`
+- `CreateTaskSchema`, `SearchTasksSchema`, `TaskHistorySchema`, `AchievementMatchSchema`, `SearchShopItemsSchema`
 - All tool inputs validated before execution
 
 **error/error-handler.ts** - Error handling utilities
@@ -73,12 +88,24 @@ LifeUp Cloud API (Android Device)
 - `LIFEUP_URL_SCHEMES` - lifeup:// protocol URLs for task creation
 - Status codes and response codes
 
-### Read-Only Safety
+### Mutation Operations
 
-The server enforces read-only operations (cannot complete tasks, purchase items, or unlock achievements) through:
-1. Whitelisting only safe endpoints in the API client
-2. Never constructing URLs with completion/state-mutation parameters
-3. Tool implementations never call state-mutating endpoints
+The server supports "safe mutations" - create/update/delete operations that don't automatically affect game state:
+
+**Safe Mutations:**
+1. Task creation (lifeup://api/add_task) - Creates tasks that must be manually completed in the app
+2. Achievement creation/update/delete (lifeup://api/achievement) - Manages achievement definitions without unlocking them automatically (created locked by default)
+
+**Prohibited Operations:**
+- Task completion/deletion (requires manual action in app)
+- Shop purchases (requires manual action in app)
+- Achievement unlocking (achievements are created locked by default)
+- Reward/penalty direct calls (lifeup://api/reward, /penalty)
+
+Enforcement through:
+1. URL scheme whitelisting (only safe endpoints exposed)
+2. Default safe parameters (e.g., unlocked: false for achievements)
+3. Tool implementations never auto-complete/unlock operations
 
 ### Error Flow
 
@@ -145,12 +172,18 @@ npm run build && node test-mcp.js
 
 ### Adding a New MCP Tool
 
-1. Create tool method in appropriate file (tools/task-tools.ts or tools/achievement-tools.ts)
-2. Add input validation schema to config/validation.ts
-3. Register handler in server.ts `setupToolHandlers()` method
-4. Add tool definition to `getTools()` method with proper schema
-5. Update this file with the new tool
-6. Test with: `npm run build && node test-mcp.js`
+1. Create tool method in appropriate file:
+   - `tools/task-tools.ts` - Task management tools
+   - `tools/achievement-tools.ts` - Achievement tools
+   - `tools/user-info-tools.ts` - User profile and character tools
+   - `tools/shop-tools.ts` - Shop and inventory tools
+   - Create new file for tools in new category
+2. Add input validation schema to config/validation.ts (if input parameters needed)
+3. Add client method to `client/lifeup-client.ts` if new API endpoint needed
+4. Register handler in server.ts `setupToolHandlers()` method
+5. Add tool definition to `getTools()` method with proper schema
+6. Update this file with the new tool
+7. Test with: `npm run build && node test-mcp.js`
 
 ### Modifying API Client
 
@@ -197,7 +230,7 @@ Timeout, retries, and other runtime config defined in src/config/config.ts:
 
 The project includes a basic test suite (test-mcp.js) that verifies:
 1. Server startup
-2. All 7 tools are registered
+2. All 16 tools are registered
 3. Input validation rejects invalid requests
 4. Error handling works for connectivity issues
 
@@ -231,9 +264,13 @@ No other automated tests exist. Future enhancements could include:
 
 The server wraps LifeUp Cloud's HTTP API. Key integration points:
 
+- **Task Management** - Uses `/tasks`, `/history`, and task categories endpoints
 - **Task Creation** - Uses `lifeup://api/add_task` URL scheme via `/api` endpoint
-- **Task Querying** - Uses `/tasks` and `/history` endpoints
-- **Achievements** - Uses `/achievements` with fallback to `/achievement_categories`
+- **Achievements** - Uses `/achievements` with fallback to `/achievement_categories` for querying
+- **Achievement Management** - Uses `lifeup://api/achievement` URL scheme for CRUD operations (create/update/delete)
+- **Skills** - Reads from `/skills` endpoint for character progression
+- **Shop & Items** - Uses `/items` and `/items_categories` endpoints for inventory browsing
+- **User Profile** - Uses `/info` and `/coin` endpoints for account information
 - **Error Code 10002** - Indicates ContentProvider error (feature unavailable in this LifeUp version)
 
 For API details, refer to the documentation in the `docs/` folder (markdown files are more accurate than the autogenerated JSON). For general information, see: https://docs.lifeupapp.fun/en/#/guide/api

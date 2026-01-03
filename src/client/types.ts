@@ -139,3 +139,56 @@ export interface TaskMatchResult {
   confidence: number; // 0-100 confidence score
   matchReasons: string[];
 }
+
+export interface AchievementCondition {
+  type: number;
+  related_id?: number | null;
+  target: number;
+}
+
+export interface ItemReward {
+  item_id: number;
+  amount: number;
+}
+
+export interface CreateAchievementRequest {
+  name: string;
+  category_id: number;
+  desc?: string;
+  conditions_json?: AchievementCondition[];
+  exp?: number;
+  coin?: number;
+  coin_var?: number;
+  skills?: number[];
+  items?: ItemReward[];
+  item_id?: number;
+  item_amount?: number;
+  secret?: boolean;
+  color?: string;
+  unlocked?: boolean;
+  write_feeling?: boolean;
+}
+
+export interface UpdateAchievementRequest {
+  edit_id: number;
+  name?: string;
+  category_id?: number;
+  desc?: string;
+  conditions_json?: AchievementCondition[];
+  exp?: number;
+  coin?: number;
+  coin_var?: number;
+  coin_set_type?: 'absolute' | 'relative';
+  exp_set_type?: 'absolute' | 'relative';
+  skills?: number[];
+  items?: ItemReward[];
+  item_id?: number;
+  item_amount?: number;
+  secret?: boolean;
+  color?: string;
+  unlocked?: boolean;
+}
+
+export interface DeleteAchievementRequest {
+  edit_id: number;
+}

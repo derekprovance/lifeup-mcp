@@ -11,6 +11,8 @@ import { z } from 'zod';
 import { lifeupClient } from './client/lifeup-client.js';
 import { TaskTools } from './tools/task-tools.js';
 import { AchievementTools } from './tools/achievement-tools.js';
+import { UserInfoTools } from './tools/user-info-tools.js';
+import { ShopTools } from './tools/shop-tools.js';
 import { configManager } from './config/config.js';
 
 class LifeUpServer {
@@ -104,6 +106,42 @@ class LifeUpServer {
 
             case 'match_task_to_achievements':
               result = await AchievementTools.matchTaskToAchievements(request.params.arguments);
+              break;
+
+            case 'list_skills':
+              result = await UserInfoTools.listSkills();
+              break;
+
+            case 'get_user_info':
+              result = await UserInfoTools.getUserInfo();
+              break;
+
+            case 'get_coin_balance':
+              result = await UserInfoTools.getCoinBalance();
+              break;
+
+            case 'list_shop_items':
+              result = await ShopTools.listShopItems();
+              break;
+
+            case 'get_shop_categories':
+              result = await ShopTools.getShopCategories();
+              break;
+
+            case 'search_shop_items':
+              result = await ShopTools.searchShopItems(request.params.arguments);
+              break;
+
+            case 'create_achievement':
+              result = await AchievementTools.createAchievement(request.params.arguments);
+              break;
+
+            case 'update_achievement':
+              result = await AchievementTools.updateAchievement(request.params.arguments);
+              break;
+
+            case 'delete_achievement':
+              result = await AchievementTools.deleteAchievement(request.params.arguments);
               break;
 
             default:
@@ -296,6 +334,275 @@ class LifeUpServer {
             },
           },
           required: ['taskName'],
+        },
+      },
+      {
+        name: 'list_skills',
+        description:
+          'List all character skills with their current levels, experience points, and progress toward the next level. ' +
+          'Useful for understanding your character progression and which skills to focus on.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+        },
+      },
+      {
+        name: 'get_user_info',
+        description:
+          'Get user profile information including player name, character level, total experience, and app version. ' +
+          'Useful for understanding the current state of your LifeUp account.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+        },
+      },
+      {
+        name: 'get_coin_balance',
+        description:
+          'Get your current coin balance and currency information. Coins are the in-game currency used to purchase items from the shop. ' +
+          'Useful for planning purchases and understanding your economy.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+        },
+      },
+      {
+        name: 'list_shop_items',
+        description:
+          'List all items available in the shop with prices, stock availability, and your owned quantity. ' +
+          'Shows both in-stock and out-of-stock items. Useful for browsing available rewards and planning future purchases.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+        },
+      },
+      {
+        name: 'get_shop_categories',
+        description:
+          'List all shop item categories. Categories help organize items in the shop and make browsing easier.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+        },
+      },
+      {
+        name: 'search_shop_items',
+        description:
+          'Search and filter shop items by criteria such as name, category, or price range. ' +
+          'Useful for finding specific items or comparing prices across different categories.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            searchQuery: {
+              type: 'string',
+              description: 'Search for items containing this text in name or description (optional)',
+            },
+            categoryId: {
+              type: 'number',
+              description: 'Filter by category ID (optional)',
+            },
+            minPrice: {
+              type: 'number',
+              description: 'Filter for items with price at least this value (optional)',
+            },
+            maxPrice: {
+              type: 'number',
+              description: 'Filter for items with price at most this value (optional)',
+            },
+          },
+        },
+      },
+      {
+        name: 'create_achievement',
+        description:
+          'Create a new custom achievement with unlock conditions and rewards. ' +
+          'Requires achievement name and category ID. Optionally specify unlock conditions (JSON array), ' +
+          'experience/coin rewards, skill rewards, item rewards, and appearance settings. ' +
+          'Created achievements are locked by default.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            name: {
+              type: 'string',
+              description: 'Achievement name (required, max 100 characters)',
+            },
+            category_id: {
+              type: 'number',
+              description: 'Achievement category/list ID (required)',
+            },
+            desc: {
+              type: 'string',
+              description: 'Achievement description (optional, max 500 characters)',
+            },
+            conditions_json: {
+              type: 'array',
+              description: 'Unlock conditions as JSON array (optional). Format: [{"type":7,"target":1000000}]. ' +
+                'Common types: 0=task completion, 3=pomodoro, 6=daily streak, 7=coins, 13=skill level, 14=life level',
+              items: {
+                type: 'object',
+                properties: {
+                  type: { type: 'number' },
+                  related_id: { type: 'number' },
+                  target: { type: 'number' },
+                },
+                required: ['type', 'target'],
+              },
+            },
+            exp: {
+              type: 'number',
+              description: 'Experience points reward (optional)',
+            },
+            coin: {
+              type: 'number',
+              description: 'Coin reward (optional, 0-999999)',
+            },
+            coin_var: {
+              type: 'number',
+              description: 'Coin reward variation/randomness (optional)',
+            },
+            skills: {
+              type: 'array',
+              items: { type: 'number' },
+              description: 'Skill IDs to reward (optional)',
+            },
+            items: {
+              type: 'array',
+              description: 'Item rewards (optional). Format: [{"item_id":1,"amount":2}]',
+              items: {
+                type: 'object',
+                properties: {
+                  item_id: { type: 'number' },
+                  amount: { type: 'number' },
+                },
+                required: ['item_id', 'amount'],
+              },
+            },
+            item_id: {
+              type: 'number',
+              description: 'Single item reward ID (optional, alternative to items array)',
+            },
+            item_amount: {
+              type: 'number',
+              description: 'Single item reward amount (optional, 1-99)',
+            },
+            secret: {
+              type: 'boolean',
+              description: 'Hidden achievement (optional, default: false)',
+            },
+            color: {
+              type: 'string',
+              description: 'Title color in hex format (optional, e.g., "#66CCFF")',
+            },
+            unlocked: {
+              type: 'boolean',
+              description: 'Create as already unlocked (optional, default: false)',
+            },
+          },
+          required: ['name', 'category_id'],
+        },
+      },
+      {
+        name: 'update_achievement',
+        description:
+          'Update an existing achievement by ID. Can modify any property including name, conditions, rewards, and unlock status. ' +
+          'Use absolute or relative set types for numeric rewards.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            edit_id: {
+              type: 'number',
+              description: 'Achievement ID to update (required)',
+            },
+            name: {
+              type: 'string',
+              description: 'New achievement name (optional)',
+            },
+            category_id: {
+              type: 'number',
+              description: 'New category ID (optional)',
+            },
+            desc: {
+              type: 'string',
+              description: 'New description (optional)',
+            },
+            conditions_json: {
+              type: 'array',
+              description: 'New unlock conditions (optional). Replaces existing conditions.',
+              items: {
+                type: 'object',
+                properties: {
+                  type: { type: 'number' },
+                  related_id: { type: 'number' },
+                  target: { type: 'number' },
+                },
+                required: ['type', 'target'],
+              },
+            },
+            exp: {
+              type: 'number',
+              description: 'Experience reward (optional)',
+            },
+            coin: {
+              type: 'number',
+              description: 'Coin reward (optional)',
+            },
+            coin_set_type: {
+              type: 'string',
+              enum: ['absolute', 'relative'],
+              description: 'How to set coin value: absolute (replace) or relative (add/subtract)',
+            },
+            exp_set_type: {
+              type: 'string',
+              enum: ['absolute', 'relative'],
+              description: 'How to set exp value: absolute (replace) or relative (add/subtract)',
+            },
+            skills: {
+              type: 'array',
+              items: { type: 'number' },
+              description: 'New skill rewards (optional, replaces existing)',
+            },
+            items: {
+              type: 'array',
+              description: 'New item rewards (optional, replaces existing)',
+              items: {
+                type: 'object',
+                properties: {
+                  item_id: { type: 'number' },
+                  amount: { type: 'number' },
+                },
+                required: ['item_id', 'amount'],
+              },
+            },
+            secret: {
+              type: 'boolean',
+              description: 'Update hidden status (optional)',
+            },
+            color: {
+              type: 'string',
+              description: 'New title color (optional, hex format)',
+            },
+            unlocked: {
+              type: 'boolean',
+              description: 'Update unlock status (optional)',
+            },
+          },
+          required: ['edit_id'],
+        },
+      },
+      {
+        name: 'delete_achievement',
+        description:
+          'Delete an achievement by ID. This action is permanent and cannot be undone. ' +
+          'Use with caution.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            edit_id: {
+              type: 'number',
+              description: 'Achievement ID to delete (required)',
+            },
+          },
+          required: ['edit_id'],
         },
       },
     ];

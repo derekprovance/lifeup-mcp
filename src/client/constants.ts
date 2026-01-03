@@ -29,6 +29,8 @@ export const LIFEUP_URL_SCHEMES = {
   TASK_CREATE: 'lifeup://api/add_task',
   // Reward format: lifeup://api/reward?type=coin&content=...&number=...
   REWARD: 'lifeup://api/reward',
+  // Achievement creation/update/delete format: lifeup://api/achievement?name=...&category_id=...
+  ACHIEVEMENT: 'lifeup://api/achievement',
 } as const;
 
 // Task status codes

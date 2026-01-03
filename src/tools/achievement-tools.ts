@@ -5,7 +5,16 @@
 import { lifeupClient } from '../client/lifeup-client.js';
 import { configManager } from '../config/config.js';
 import { ErrorHandler, LifeUpError } from '../error/error-handler.js';
-import { AchievementMatchSchema, type AchievementMatchInput } from '../config/validation.js';
+import {
+  AchievementMatchSchema,
+  CreateAchievementSchema,
+  UpdateAchievementSchema,
+  DeleteAchievementSchema,
+  type AchievementMatchInput,
+  type CreateAchievementInput,
+  type UpdateAchievementInput,
+  type DeleteAchievementInput,
+} from '../config/validation.js';
 import * as Types from '../client/types.js';
 import { ZodError } from 'zod';
 
@@ -309,5 +318,151 @@ export class AchievementTools {
     }
 
     return result;
+  }
+
+  /**
+   * Create a new achievement
+   */
+  static async createAchievement(input: unknown): Promise<string> {
+    try {
+      const validated = CreateAchievementSchema.parse(input);
+      configManager.logIfDebug('Creating achievement:', validated);
+
+      const isHealthy = await lifeupClient.healthCheck();
+      if (!isHealthy) {
+        throw new LifeUpError(
+          'LifeUp server is unreachable',
+          'SERVER_UNREACHABLE',
+          'The LifeUp server is not responding.',
+          true
+        );
+      }
+
+      const response = await lifeupClient.createAchievement(validated);
+
+      let result = `✓ Achievement created successfully!\n\n`;
+      result += `**Name**: ${validated.name}\n`;
+      if (validated.desc) result += `**Description**: ${validated.desc}\n`;
+      result += `**Category ID**: ${validated.category_id}\n`;
+
+      if (validated.conditions_json && validated.conditions_json.length > 0) {
+        result += `**Unlock Conditions**: ${validated.conditions_json.length} condition(s) set\n`;
+      }
+
+      if (validated.exp) result += `**Experience Reward**: ${validated.exp} XP\n`;
+      if (validated.coin) result += `**Coin Reward**: ${validated.coin}\n`;
+      if (validated.skills && validated.skills.length > 0) {
+        result += `**Skills**: ${validated.skills.join(', ')}\n`;
+      }
+
+      result += `**Status**: ${validated.unlocked ? 'Unlocked' : 'Locked'}\n`;
+
+      if (response.data?.id) {
+        result += `**Achievement ID**: ${response.data.id}\n`;
+      }
+
+      return result;
+    } catch (error) {
+      if (error instanceof LifeUpError) {
+        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
+      }
+
+      if (error instanceof ZodError) {
+        const messages = error.issues.map((e) => `- ${e.path.join('.')}: ${e.message}`).join('\n');
+        return `❌ Invalid input:\n${messages}`;
+      }
+
+      return `❌ Unexpected error creating achievement: ${(error as Error).message}`;
+    }
+  }
+
+  /**
+   * Update an existing achievement
+   */
+  static async updateAchievement(input: unknown): Promise<string> {
+    try {
+      const validated = UpdateAchievementSchema.parse(input);
+      configManager.logIfDebug('Updating achievement:', validated);
+
+      const isHealthy = await lifeupClient.healthCheck();
+      if (!isHealthy) {
+        throw new LifeUpError(
+          'LifeUp server is unreachable',
+          'SERVER_UNREACHABLE',
+          'The LifeUp server is not responding.',
+          true
+        );
+      }
+
+      const response = await lifeupClient.updateAchievement(validated);
+
+      let result = `✓ Achievement updated successfully!\n\n`;
+      result += `**Achievement ID**: ${validated.edit_id}\n`;
+
+      const updates: string[] = [];
+      if (validated.name) updates.push(`name to "${validated.name}"`);
+      if (validated.desc !== undefined) updates.push('description');
+      if (validated.conditions_json) updates.push('unlock conditions');
+      if (validated.exp !== undefined) updates.push('experience reward');
+      if (validated.coin !== undefined) updates.push('coin reward');
+      if (validated.skills) updates.push('skill rewards');
+      if (validated.unlocked !== undefined) updates.push(`unlock status to ${validated.unlocked ? 'unlocked' : 'locked'}`);
+
+      if (updates.length > 0) {
+        result += `**Updated**: ${updates.join(', ')}\n`;
+      }
+
+      return result;
+    } catch (error) {
+      if (error instanceof LifeUpError) {
+        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
+      }
+
+      if (error instanceof ZodError) {
+        const messages = error.issues.map((e) => `- ${e.path.join('.')}: ${e.message}`).join('\n');
+        return `❌ Invalid input:\n${messages}`;
+      }
+
+      return `❌ Unexpected error updating achievement: ${(error as Error).message}`;
+    }
+  }
+
+  /**
+   * Delete an achievement
+   */
+  static async deleteAchievement(input: unknown): Promise<string> {
+    try {
+      const validated = DeleteAchievementSchema.parse(input);
+      configManager.logIfDebug('Deleting achievement:', validated);
+
+      const isHealthy = await lifeupClient.healthCheck();
+      if (!isHealthy) {
+        throw new LifeUpError(
+          'LifeUp server is unreachable',
+          'SERVER_UNREACHABLE',
+          'The LifeUp server is not responding.',
+          true
+        );
+      }
+
+      await lifeupClient.deleteAchievement(validated);
+
+      return (
+        `✓ Achievement deleted successfully!\n\n` +
+        `**Achievement ID**: ${validated.edit_id}\n\n` +
+        `⚠️  This action is permanent and cannot be undone.`
+      );
+    } catch (error) {
+      if (error instanceof LifeUpError) {
+        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
+      }
+
+      if (error instanceof ZodError) {
+        const messages = error.issues.map((e) => `- ${e.path.join('.')}: ${e.message}`).join('\n');
+        return `❌ Invalid input:\n${messages}`;
+      }
+
+      return `❌ Unexpected error deleting achievement: ${(error as Error).message}`;
+    }
   }
 }

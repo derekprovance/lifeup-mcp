@@ -363,6 +363,236 @@ export class LifeUpClient {
       return [];
     }
   }
+
+  /**
+   * Get all shop items
+   */
+  async getShopItems(): Promise<Types.Item[]> {
+    try {
+      const response = await this.axiosInstance.get<Types.HttpResponse<Types.Item[]>>(
+        API_ENDPOINTS.ITEMS
+      );
+
+      if (response.data.code === RESPONSE_CODE.SUCCESS && Array.isArray(response.data.data)) {
+        return response.data.data;
+      }
+
+      return [];
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        throw ErrorHandler.handleNetworkError(error);
+      }
+      return [];
+    }
+  }
+
+  /**
+   * Get shop item categories
+   */
+  async getItemCategories(): Promise<Types.Category[]> {
+    try {
+      const response = await this.axiosInstance.get<Types.HttpResponse<Types.Category[]>>(
+        API_ENDPOINTS.ITEM_CATEGORIES
+      );
+
+      if (response.data.code === RESPONSE_CODE.SUCCESS && Array.isArray(response.data.data)) {
+        return response.data.data;
+      }
+
+      return [];
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        throw ErrorHandler.handleNetworkError(error);
+      }
+      return [];
+    }
+  }
+
+  /**
+   * Create a new achievement
+   */
+  async createAchievement(request: Types.CreateAchievementRequest): Promise<Types.HttpResponse> {
+    try {
+      const url = this.buildAchievementUrl(request);
+      const response = await this.executeUrlScheme(url);
+
+      if (response.code === RESPONSE_CODE.SUCCESS) {
+        return response;
+      }
+
+      throw new LifeUpError(
+        `Failed to create achievement: ${response.message}`,
+        'ACHIEVEMENT_CREATION_FAILED',
+        `Could not create achievement: ${response.message}`,
+        false
+      );
+    } catch (error) {
+      if (error instanceof LifeUpError) {
+        throw error;
+      }
+
+      if (error instanceof AxiosError) {
+        throw ErrorHandler.handleNetworkError(error);
+      }
+
+      throw new LifeUpError(
+        `Unexpected error creating achievement: ${(error as Error).message}`,
+        'UNKNOWN_ERROR',
+        `An unexpected error occurred while creating the achievement.`,
+        false
+      );
+    }
+  }
+
+  /**
+   * Update an existing achievement
+   */
+  async updateAchievement(request: Types.UpdateAchievementRequest): Promise<Types.HttpResponse> {
+    try {
+      const url = this.buildAchievementUrl(request);
+      const response = await this.executeUrlScheme(url);
+
+      if (response.code === RESPONSE_CODE.SUCCESS) {
+        return response;
+      }
+
+      throw new LifeUpError(
+        `Failed to update achievement: ${response.message}`,
+        'ACHIEVEMENT_UPDATE_FAILED',
+        `Could not update achievement: ${response.message}`,
+        false
+      );
+    } catch (error) {
+      if (error instanceof LifeUpError) {
+        throw error;
+      }
+
+      if (error instanceof AxiosError) {
+        throw ErrorHandler.handleNetworkError(error);
+      }
+
+      throw new LifeUpError(
+        `Unexpected error updating achievement: ${(error as Error).message}`,
+        'UNKNOWN_ERROR',
+        `An unexpected error occurred while updating the achievement.`,
+        false
+      );
+    }
+  }
+
+  /**
+   * Delete an achievement
+   */
+  async deleteAchievement(request: Types.DeleteAchievementRequest): Promise<Types.HttpResponse> {
+    try {
+      const url = this.buildAchievementDeleteUrl(request);
+      const response = await this.executeUrlScheme(url);
+
+      if (response.code === RESPONSE_CODE.SUCCESS) {
+        return response;
+      }
+
+      throw new LifeUpError(
+        `Failed to delete achievement: ${response.message}`,
+        'ACHIEVEMENT_DELETE_FAILED',
+        `Could not delete achievement: ${response.message}`,
+        false
+      );
+    } catch (error) {
+      if (error instanceof LifeUpError) {
+        throw error;
+      }
+
+      if (error instanceof AxiosError) {
+        throw ErrorHandler.handleNetworkError(error);
+      }
+
+      throw new LifeUpError(
+        `Unexpected error deleting achievement: ${(error as Error).message}`,
+        'UNKNOWN_ERROR',
+        `An unexpected error occurred while deleting the achievement.`,
+        false
+      );
+    }
+  }
+
+  /**
+   * Build achievement URL for create/update operations
+   */
+  private buildAchievementUrl(request: Types.CreateAchievementRequest | Types.UpdateAchievementRequest): string {
+    const params = new URLSearchParams();
+
+    // Edit mode if edit_id present
+    if ('edit_id' in request && request.edit_id) {
+      params.append('edit_id', String(request.edit_id));
+    }
+
+    // Required for create, optional for update
+    if (request.name) params.append('name', request.name);
+    if (request.category_id) params.append('category_id', String(request.category_id));
+
+    // Optional fields
+    if (request.desc) params.append('desc', request.desc);
+    if (request.exp !== undefined) params.append('exp', String(request.exp));
+    if (request.coin !== undefined) params.append('coin', String(request.coin));
+    if (request.coin_var !== undefined) params.append('coin_var', String(request.coin_var));
+
+    // Set types (update only)
+    if ('coin_set_type' in request && request.coin_set_type) {
+      params.append('coin_set_type', request.coin_set_type);
+    }
+    if ('exp_set_type' in request && request.exp_set_type) {
+      params.append('exp_set_type', request.exp_set_type);
+    }
+
+    // Conditions JSON
+    if (request.conditions_json && request.conditions_json.length > 0) {
+      params.append('conditions_json', JSON.stringify(request.conditions_json));
+    }
+
+    // Skills array (multiple params)
+    if (request.skills && request.skills.length > 0) {
+      request.skills.forEach((skillId) => {
+        params.append('skills', String(skillId));
+      });
+    }
+
+    // Items JSON array
+    if (request.items && request.items.length > 0) {
+      params.append('items', JSON.stringify(request.items));
+    }
+
+    // Single item reward
+    if (request.item_id !== undefined) params.append('item_id', String(request.item_id));
+    if (request.item_amount !== undefined) params.append('item_amount', String(request.item_amount));
+
+    // Boolean flags
+    if (request.secret !== undefined) params.append('secret', request.secret ? 'true' : 'false');
+    if (request.unlocked !== undefined) params.append('unlocked', request.unlocked ? 'true' : 'false');
+    if ('write_feeling' in request && request.write_feeling !== undefined) {
+      params.append('write_feeling', request.write_feeling ? 'true' : 'false');
+    }
+
+    // Color (must encode # as %23)
+    if (request.color) {
+      params.append('color', request.color.replace('#', '%23'));
+    }
+
+    const url = `${LIFEUP_URL_SCHEMES.ACHIEVEMENT}?${params.toString().replace(/\+/g, '%20')}`;
+    return url;
+  }
+
+  /**
+   * Build achievement delete URL
+   */
+  private buildAchievementDeleteUrl(request: Types.DeleteAchievementRequest): string {
+    const params = new URLSearchParams();
+    params.append('edit_id', String(request.edit_id));
+    params.append('delete', 'true');
+
+    const url = `${LIFEUP_URL_SCHEMES.ACHIEVEMENT}?${params.toString()}`;
+    return url;
+  }
 }
 
 // Singleton instance
