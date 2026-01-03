@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**LifeUp MCP Server** is a Model Context Protocol (MCP) server that enables Claude to interact with the LifeUp task management app running on a local Android device. The server acts as a bridge between Claude and LifeUp's HTTP API, exposing 20 tools for task creation, achievement management, querying, user profile information, shop browsing, and data mutation operations.
+**LifeUp MCP Server** is a Model Context Protocol (MCP) server that enables Claude to interact with the LifeUp task management app running on a local Android device. The server acts as a bridge between Claude and LifeUp's HTTP API, exposing 20 tools for task creation, achievement management, querying, user profile information, shop browsing, and data mutation operations. In SAFE_MODE, 14 tools are available (11 read-only + 3 create operations).
 
 ## Architecture
 
@@ -131,6 +131,11 @@ Enforcement through:
 3. Tool implementations use explicit parameters (not auto-granted rewards)
 4. Penalties require custom reason text (explicit user intent)
 
+**SAFE_MODE Behavior:**
+- When SAFE_MODE is enabled, create operations remain available
+- Edit and delete operations are blocked both at tool list registration and runtime
+- Users receive clear error messages if attempting blocked operations
+
 ### Error Flow
 
 ```
@@ -242,7 +247,7 @@ To improve: modify keyword extraction or confidence calculation logic.
 - **LIFEUP_PORT** - HTTP API port (default: 13276)
 - **LIFEUP_API_TOKEN** - Optional authentication token (leave empty if not configured)
 - **DEBUG** - Enable debug logging (default: false, set to "true" for logs)
-- **SAFE_MODE** - Disable mutation tools when true (default: false). When enabled, only read-only query tools are available
+- **SAFE_MODE** - When true, disables edit and delete mutation tools (default: false). Create operations (create_task, create_achievement, add_shop_item) remain available. Only edit/delete operations (edit_task, update_achievement, delete_achievement, edit_shop_item, apply_penalty, edit_skill) are blocked.
 
 ### Runtime Configuration
 
@@ -255,7 +260,7 @@ Timeout, retries, and other runtime config defined in src/config/config.ts:
 
 The project includes a basic test suite (test-mcp.js) that verifies:
 1. Server startup
-2. All 20 tools are registered (11 read-only tools when SAFE_MODE=true)
+2. All 20 tools are registered (14 tools when SAFE_MODE=true: 11 read-only + 3 create)
 3. Input validation rejects invalid requests
 4. Error handling works for connectivity issues
 
@@ -284,6 +289,7 @@ No other automated tests exist. Future enhancements could include:
 4. **Markdown Output** - All tools return formatted markdown strings for rich Claude display
 5. **User-Friendly Errors** - All errors include actionable guidance (e.g., "update LIFEUP_HOST if IP changed")
 6. **Read-Only by Design** - API client only wraps safe endpoints, enforced at source
+7. **Granular SAFE_MODE** - SAFE_MODE distinguishes between create (allowed) and edit/delete (blocked) operations, enabling safe experimentation with new entities while preventing data corruption. Runtime enforcement provides defense-in-depth.
 
 ## LifeUp API Integration
 

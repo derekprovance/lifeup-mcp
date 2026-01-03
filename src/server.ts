@@ -16,18 +16,28 @@ import { ShopTools } from './tools/shop-tools.js';
 import { MutationTools } from './tools/mutation-tools.js';
 import { configManager } from './config/config.js';
 
-const MUTATION_TOOLS = [
+// Tools that create new entities - allowed in SAFE_MODE
+const CREATE_TOOLS = [
   'create_task',
-  'edit_task',
   'create_achievement',
+  'add_shop_item',
+] as const;
+
+// Tools that modify or delete existing entities - blocked in SAFE_MODE
+const EDIT_DELETE_TOOLS = [
+  'edit_task',
   'update_achievement',
   'delete_achievement',
-  'add_shop_item',
   'edit_shop_item',
   'apply_penalty',
   'edit_skill',
 ] as const;
 
+// All mutation tools (for backward compatibility)
+const MUTATION_TOOLS = [...CREATE_TOOLS, ...EDIT_DELETE_TOOLS] as const;
+
+type CreateTool = typeof CREATE_TOOLS[number];
+type EditDeleteTool = typeof EDIT_DELETE_TOOLS[number];
 type MutationTool = typeof MUTATION_TOOLS[number];
 
 class LifeUpServer {
@@ -73,6 +83,22 @@ class LifeUpServer {
       CallToolRequestSchema,
       async (request: CallToolRequest) => {
         configManager.logIfDebug(`Tool called: ${request.params.name}`, request.params.arguments);
+
+        // Runtime enforcement: block edit/delete tools in SAFE_MODE
+        if (configManager.isSafeMode() && EDIT_DELETE_TOOLS.includes(request.params.name as EditDeleteTool)) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `❌ Operation blocked: "${request.params.name}" is disabled in SAFE_MODE.\n\n` +
+                      `This tool modifies or deletes existing data. SAFE_MODE allows read operations and creating new entities ` +
+                      `(create_task, create_achievement, add_shop_item), but blocks modifications and deletions.\n\n` +
+                      `To use this tool, set SAFE_MODE=false in your .env file and restart the server.`,
+              },
+            ],
+            isError: true,
+          };
+        }
 
         try {
           let result: string;
@@ -930,9 +956,9 @@ class LifeUpServer {
       },
     ];
 
-    // Filter out mutation tools if in safe mode
+    // Filter out edit/delete tools if in safe mode (create tools still allowed)
     if (configManager.isSafeMode()) {
-      return allTools.filter(tool => !MUTATION_TOOLS.includes(tool.name as MutationTool));
+      return allTools.filter(tool => !EDIT_DELETE_TOOLS.includes(tool.name as EditDeleteTool));
     }
 
     return allTools;

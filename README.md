@@ -68,7 +68,7 @@ LIFEUP_HOST=10.103.2.235      # Device IP
 LIFEUP_PORT=13276              # API port
 LIFEUP_API_TOKEN=              # Optional auth token
 DEBUG=false                     # Set to 'true' for logging
-SAFE_MODE=false                 # Set to 'true' to disable mutations
+SAFE_MODE=false                 # Set to 'true' to disable edit/delete mutations
 ```
 
 ## Troubleshooting
@@ -88,6 +88,15 @@ SAFE_MODE=false                 # Set to 'true' to disable mutations
 ```bash
 DEBUG=true npm run start
 ```
+
+## Safe Mode
+
+SAFE_MODE provides protection against accidental data modification:
+
+-   **Enabled** (SAFE_MODE=true): Allows read operations and creating new entities (tasks, achievements, shop items). Blocks editing and deleting existing data.
+-   **Disabled** (SAFE_MODE=false): Full access to all 20 tools including edits and deletions.
+
+Useful for testing or when you want Claude to help plan/create but not modify existing data.
 
 ## Links
 
