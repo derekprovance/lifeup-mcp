@@ -192,3 +192,113 @@ export interface UpdateAchievementRequest {
 export interface DeleteAchievementRequest {
   edit_id: number;
 }
+
+// Edit Task
+export interface EditTaskRequest {
+  id?: number;
+  gid?: number;
+  name?: string;
+  todo?: string;
+  notes?: string;
+  coin?: number;
+  coin_var?: number;
+  exp?: number;
+  skills?: number[];
+  category?: number;
+  frequency?: number;
+  importance?: number;
+  difficulty?: number;
+  deadline?: number;
+  remind_time?: number;
+  start_time?: number;
+  color?: string;
+  background_url?: string;
+  background_alpha?: number;
+  enable_outline?: boolean;
+  use_light_remark_text_color?: boolean;
+  item_id?: number;
+  item_name?: string;
+  item_amount?: number;
+  items?: ItemReward[];
+  auto_use_item?: boolean;
+  frozen?: boolean;
+}
+
+// Shop Item Common
+export interface ItemEffect {
+  type: number;
+  info?: any;
+}
+
+export interface PurchaseLimit {
+  type: 'daily' | 'total';
+  value: number;
+}
+
+// Add Shop Item
+export interface AddShopItemRequest {
+  name: string;
+  desc?: string;
+  icon?: string;
+  title_color_string?: string;
+  price?: number;
+  stock_number?: number;
+  action_text?: string;
+  disable_purchase?: boolean;
+  disable_use?: boolean;
+  category?: number;
+  order?: number;
+  purchase_limit?: PurchaseLimit[];
+  effects?: ItemEffect[];
+  own_number?: number;
+  unlist?: boolean;
+}
+
+// Edit Shop Item
+export interface EditShopItemRequest {
+  id?: number;
+  name?: string;
+  set_name?: string;
+  set_desc?: string;
+  set_icon?: string;
+  set_price?: number;
+  set_price_type?: 'absolute' | 'relative';
+  own_number?: number;
+  own_number_type?: 'absolute' | 'relative';
+  stock_number?: number;
+  stock_number_type?: 'absolute' | 'relative';
+  disable_purchase?: boolean;
+  disable_use?: boolean;
+  action_text?: string;
+  title_color_string?: string;
+  effects?: ItemEffect[];
+  purchase_limit?: PurchaseLimit[];
+  category_id?: number;
+  order?: number;
+  unlist?: boolean;
+}
+
+// Apply Penalty
+export interface ApplyPenaltyRequest {
+  type: 'coin' | 'exp' | 'item';
+  content: string;
+  number: number;
+  skills?: number[];
+  item_id?: number;
+  item_name?: string;
+  silent?: boolean;
+}
+
+// Edit Skill
+export interface EditSkillRequest {
+  id?: number;
+  content?: string;
+  desc?: string;
+  icon?: string;
+  color?: string;
+  type?: number;
+  order?: number;
+  status?: number;
+  exp?: number;
+  delete?: boolean;
+}

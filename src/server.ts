@@ -13,6 +13,7 @@ import { TaskTools } from './tools/task-tools.js';
 import { AchievementTools } from './tools/achievement-tools.js';
 import { UserInfoTools } from './tools/user-info-tools.js';
 import { ShopTools } from './tools/shop-tools.js';
+import { MutationTools } from './tools/mutation-tools.js';
 import { configManager } from './config/config.js';
 
 class LifeUpServer {
@@ -142,6 +143,26 @@ class LifeUpServer {
 
             case 'delete_achievement':
               result = await AchievementTools.deleteAchievement(request.params.arguments);
+              break;
+
+            case 'edit_task':
+              result = await MutationTools.editTask(request.params.arguments);
+              break;
+
+            case 'add_shop_item':
+              result = await MutationTools.addShopItem(request.params.arguments);
+              break;
+
+            case 'edit_shop_item':
+              result = await MutationTools.editShopItem(request.params.arguments);
+              break;
+
+            case 'apply_penalty':
+              result = await MutationTools.applyPenalty(request.params.arguments);
+              break;
+
+            case 'edit_skill':
+              result = await MutationTools.editSkill(request.params.arguments);
               break;
 
             default:
@@ -603,6 +624,321 @@ class LifeUpServer {
             },
           },
           required: ['edit_id'],
+        },
+      },
+      {
+        name: 'edit_task',
+        description:
+          'Edit properties of an existing task. Requires at least one identifier (id, gid, or name). ' +
+          'Can modify task content, rewards, deadline, category, appearance, and more.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'number',
+              description: 'Task ID (one of id/gid/name required)',
+            },
+            gid: {
+              type: 'number',
+              description: 'Task group ID (one of id/gid/name required)',
+            },
+            name: {
+              type: 'string',
+              description: 'Task name for fuzzy search (one of id/gid/name required)',
+            },
+            todo: {
+              type: 'string',
+              description: 'New task content/description',
+            },
+            notes: {
+              type: 'string',
+              description: 'New task notes',
+            },
+            coin: {
+              type: 'number',
+              description: 'Coin reward upon completion',
+            },
+            coin_var: {
+              type: 'number',
+              description: 'Coin variance for random rewards',
+            },
+            exp: {
+              type: 'number',
+              description: 'Experience points reward',
+            },
+            skills: {
+              type: 'array',
+              items: { type: 'number' },
+              description: 'Skill IDs for rewards',
+            },
+            category: {
+              type: 'number',
+              description: 'List/category ID (0 for default)',
+            },
+            frequency: {
+              type: 'number',
+              description: 'Repeat frequency (-1=unlimited, -3=Ebbinghaus, -4=monthly, -5=yearly)',
+            },
+            importance: {
+              type: 'number',
+              description: 'Importance level (1-4)',
+            },
+            difficulty: {
+              type: 'number',
+              description: 'Difficulty level (1-4)',
+            },
+            deadline: {
+              type: 'number',
+              description: 'Due date as timestamp in milliseconds',
+            },
+            color: {
+              type: 'string',
+              description: 'Tag color in hex format (e.g., "#FF6B6B")',
+            },
+            items: {
+              type: 'array',
+              description: 'Item rewards. Format: [{"item_id":1,"amount":2}]',
+              items: {
+                type: 'object',
+                properties: {
+                  item_id: { type: 'number' },
+                  amount: { type: 'number' },
+                },
+              },
+            },
+            frozen: {
+              type: 'boolean',
+              description: 'Freeze status for repeating tasks',
+            },
+          },
+        },
+      },
+      {
+        name: 'add_shop_item',
+        description:
+          'Create a new shop item with price, stock, effects, and purchase limits. ' +
+          'Items can have custom usage effects like coin rewards, exp bonuses, or special actions.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            name: {
+              type: 'string',
+              description: 'Item name (required)',
+            },
+            desc: {
+              type: 'string',
+              description: 'Item description',
+            },
+            icon: {
+              type: 'string',
+              description: 'Icon URL',
+            },
+            title_color_string: {
+              type: 'string',
+              description: 'Title color in hex format (e.g., "#66CCFF")',
+            },
+            price: {
+              type: 'number',
+              description: 'Purchase price in coins (default: 0)',
+            },
+            stock_number: {
+              type: 'number',
+              description: 'Initial stock quantity (-1 for unlimited, default: -1)',
+            },
+            action_text: {
+              type: 'string',
+              description: 'Custom text for use button',
+            },
+            disable_purchase: {
+              type: 'boolean',
+              description: 'Disable purchasing (default: false)',
+            },
+            disable_use: {
+              type: 'boolean',
+              description: 'Disable using (default: false)',
+            },
+            category: {
+              type: 'number',
+              description: 'Category ID (0 for default)',
+            },
+            effects: {
+              type: 'array',
+              description: 'Item usage effects. Example: [{"type":2,"info":{"min":100,"max":200}}] for coin reward',
+              items: {
+                type: 'object',
+                properties: {
+                  type: { type: 'number', description: 'Effect type: 0=none, 1=unusable, 2=increase coins, 3=decrease coins, 4=increase exp, 5=decrease exp, 6=synthesis, 7=loot box, 8=countdown, 9=web link' },
+                  info: { type: 'object', description: 'Effect parameters (varies by type)' },
+                },
+              },
+            },
+            purchase_limit: {
+              type: 'array',
+              description: 'Purchase frequency limits. Example: [{"type":"daily","value":5}]',
+              items: {
+                type: 'object',
+                properties: {
+                  type: { type: 'string', enum: ['daily', 'total'] },
+                  value: { type: 'number' },
+                },
+              },
+            },
+          },
+          required: ['name'],
+        },
+      },
+      {
+        name: 'edit_shop_item',
+        description:
+          'Modify an existing shop item. Can adjust price, stock, owned quantity, effects, and other properties. ' +
+          'Supports both absolute setting and relative adjustments for numeric values.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'number',
+              description: 'Item ID (one of id or name required)',
+            },
+            name: {
+              type: 'string',
+              description: 'Item name for fuzzy search (one of id or name required)',
+            },
+            set_name: {
+              type: 'string',
+              description: 'Set new item name',
+            },
+            set_desc: {
+              type: 'string',
+              description: 'Set new description',
+            },
+            set_price: {
+              type: 'number',
+              description: 'Adjust price (use set_price_type to specify how)',
+            },
+            set_price_type: {
+              type: 'string',
+              enum: ['absolute', 'relative'],
+              description: 'Price adjustment: absolute=set directly, relative=add/subtract',
+            },
+            stock_number: {
+              type: 'number',
+              description: 'Adjust stock (-1 for unlimited)',
+            },
+            stock_number_type: {
+              type: 'string',
+              enum: ['absolute', 'relative'],
+              description: 'Stock adjustment: absolute=set directly, relative=add/subtract',
+            },
+            own_number: {
+              type: 'number',
+              description: 'Adjust owned quantity',
+            },
+            own_number_type: {
+              type: 'string',
+              enum: ['absolute', 'relative'],
+              description: 'Owned quantity adjustment: absolute=set directly, relative=add/subtract',
+            },
+            disable_purchase: {
+              type: 'boolean',
+              description: 'Enable/disable purchasing',
+            },
+            disable_use: {
+              type: 'boolean',
+              description: 'Enable/disable using',
+            },
+            effects: {
+              type: 'array',
+              description: 'Set item usage effects (replaces existing)',
+              items: {
+                type: 'object',
+                properties: {
+                  type: { type: 'number' },
+                  info: { type: 'object' },
+                },
+              },
+            },
+          },
+        },
+      },
+      {
+        name: 'apply_penalty',
+        description:
+          'Apply a penalty to the player (coins, experience points, or items) with a custom reason. ' +
+          'The reason will be displayed in history pages. Use this to subtract resources directly.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            type: {
+              type: 'string',
+              enum: ['coin', 'exp', 'item'],
+              description: 'Penalty type: coin=coins, exp=experience points, item=shop items',
+            },
+            content: {
+              type: 'string',
+              description: 'Reason for penalty (displayed in history)',
+            },
+            number: {
+              type: 'number',
+              description: 'Amount to penalize (max: 999999 for coin, 99999 for exp, 999 for items)',
+            },
+            skills: {
+              type: 'array',
+              items: { type: 'number' },
+              description: 'Skill/attribute IDs (only for exp type)',
+            },
+            item_id: {
+              type: 'number',
+              description: 'Item ID (only for item type, one of item_id or item_name required)',
+            },
+            item_name: {
+              type: 'string',
+              description: 'Item name for fuzzy match (only for item type, one of item_id or item_name required)',
+            },
+            silent: {
+              type: 'boolean',
+              description: 'Disable UI prompts (default: false)',
+            },
+          },
+          required: ['type', 'content', 'number'],
+        },
+      },
+      {
+        name: 'edit_skill',
+        description:
+          'Create a new skill or edit an existing skill (name, icon, color, experience). ' +
+          'Can also delete skills. Skills represent character attributes that can be leveled up.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'number',
+              description: 'Skill ID (required for editing/deleting existing skills)',
+            },
+            content: {
+              type: 'string',
+              description: 'Skill name (required when creating new skill)',
+            },
+            desc: {
+              type: 'string',
+              description: 'Skill description',
+            },
+            icon: {
+              type: 'string',
+              description: 'Icon (can use emoji like 💻)',
+            },
+            color: {
+              type: 'string',
+              description: 'Skill color in hex format (e.g., "#FF6B6B")',
+            },
+            exp: {
+              type: 'number',
+              description: 'Experience points for this skill',
+            },
+            delete: {
+              type: 'boolean',
+              description: 'Delete flag (only valid when id is provided, default: false)',
+            },
+          },
         },
       },
     ];

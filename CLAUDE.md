@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**LifeUp MCP Server** is a Model Context Protocol (MCP) server that enables Claude to interact with the LifeUp task management app running on a local Android device. The server acts as a bridge between Claude and LifeUp's HTTP API, exposing 16 tools for task creation, achievement management, querying, user profile information, and shop browsing.
+**LifeUp MCP Server** is a Model Context Protocol (MCP) server that enables Claude to interact with the LifeUp task management app running on a local Android device. The server acts as a bridge between Claude and LifeUp's HTTP API, exposing 21 tools for task creation, achievement management, querying, user profile information, shop browsing, and data mutation operations.
 
 ## Architecture
 
@@ -64,6 +64,14 @@ LifeUp Cloud API (Android Device)
 - `searchShopItems` - Filters items by name, category, and price range
 - Enables users to browse and search the shop inventory
 
+**tools/mutation-tools.ts** - Safe data mutation operations
+- `editTask` - Edit existing task properties (name, rewards, deadline, category, appearance)
+- `addShopItem` - Create new shop items with price, stock, effects, and purchase limits
+- `editShopItem` - Modify shop items with absolute/relative adjustments
+- `applyPenalty` - Apply penalties (coins, exp, or items) with custom reasons
+- `editSkill` - Create, update, or delete skills; adjust skill experience points
+- All operations are "safe" - they don't auto-grant rewards or auto-complete tasks
+
 **config/config.ts** - Configuration singleton
 - Loads environment variables (LIFEUP_HOST, LIFEUP_PORT, LIFEUP_API_TOKEN, DEBUG)
 - Provides `configManager` singleton
@@ -90,22 +98,37 @@ LifeUp Cloud API (Android Device)
 
 ### Mutation Operations
 
-The server supports "safe mutations" - create/update/delete operations that don't automatically affect game state:
+The server supports "safe mutations" - create/update/delete operations that require explicit parameters and don't automatically affect game state:
 
-**Safe Mutations:**
-1. Task creation (lifeup://api/add_task) - Creates tasks that must be manually completed in the app
-2. Achievement creation/update/delete (lifeup://api/achievement) - Manages achievement definitions without unlocking them automatically (created locked by default)
+**Safe Mutations (Available):**
+1. **Task Management:**
+   - `create_task` - Creates tasks that must be manually completed in the app
+   - `edit_task` - Edit existing task properties (name, rewards, deadline, category, appearance)
+
+2. **Achievement Management:**
+   - `create_achievement` - Create new achievements without unlocking them (locked by default)
+   - `update_achievement` - Modify achievement properties
+   - `delete_achievement` - Remove achievement definitions
+
+3. **Shop Item Management:**
+   - `add_shop_item` - Create new shop items
+   - `edit_shop_item` - Modify item properties with absolute/relative adjustments
+
+4. **Resource Management:**
+   - `apply_penalty` - Apply coins/exp/item penalties with custom reasons (not auto-granted rewards)
+   - `edit_skill` - Create, update, or delete skills; adjust skill experience
 
 **Prohibited Operations:**
 - Task completion/deletion (requires manual action in app)
 - Shop purchases (requires manual action in app)
 - Achievement unlocking (achievements are created locked by default)
-- Reward/penalty direct calls (lifeup://api/reward, /penalty)
+- Reward grants (use create_task with rewards or apply_penalty instead)
 
 Enforcement through:
 1. URL scheme whitelisting (only safe endpoints exposed)
 2. Default safe parameters (e.g., unlocked: false for achievements)
-3. Tool implementations never auto-complete/unlock operations
+3. Tool implementations use explicit parameters (not auto-granted rewards)
+4. Penalties require custom reason text (explicit user intent)
 
 ### Error Flow
 
@@ -230,7 +253,7 @@ Timeout, retries, and other runtime config defined in src/config/config.ts:
 
 The project includes a basic test suite (test-mcp.js) that verifies:
 1. Server startup
-2. All 16 tools are registered
+2. All 21 tools are registered
 3. Input validation rejects invalid requests
 4. Error handling works for connectivity issues
 

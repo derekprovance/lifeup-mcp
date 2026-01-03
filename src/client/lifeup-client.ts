@@ -593,6 +593,394 @@ export class LifeUpClient {
     const url = `${LIFEUP_URL_SCHEMES.ACHIEVEMENT}?${params.toString()}`;
     return url;
   }
+
+  /**
+   * Edit an existing task
+   */
+  async editTask(request: Types.EditTaskRequest): Promise<Types.HttpResponse> {
+    try {
+      const url = this.buildEditTaskUrl(request);
+      const response = await this.executeUrlScheme(url);
+
+      if (response.code === RESPONSE_CODE.SUCCESS) {
+        return response;
+      }
+
+      throw new LifeUpError(
+        `Failed to edit task: ${response.message}`,
+        'TASK_EDIT_FAILED',
+        `Could not edit task: ${response.message}`,
+        false
+      );
+    } catch (error) {
+      if (error instanceof LifeUpError) {
+        throw error;
+      }
+
+      if (error instanceof AxiosError) {
+        throw ErrorHandler.handleNetworkError(error);
+      }
+
+      throw new LifeUpError(
+        `Unexpected error editing task: ${(error as Error).message}`,
+        'UNKNOWN_ERROR',
+        `An unexpected error occurred while editing the task.`,
+        false
+      );
+    }
+  }
+
+  /**
+   * Add a new shop item
+   */
+  async addShopItem(request: Types.AddShopItemRequest): Promise<Types.HttpResponse> {
+    try {
+      const url = this.buildAddShopItemUrl(request);
+      const response = await this.executeUrlScheme(url);
+
+      if (response.code === RESPONSE_CODE.SUCCESS) {
+        return response;
+      }
+
+      throw new LifeUpError(
+        `Failed to add shop item: ${response.message}`,
+        'ITEM_ADD_FAILED',
+        `Could not add shop item: ${response.message}`,
+        false
+      );
+    } catch (error) {
+      if (error instanceof LifeUpError) {
+        throw error;
+      }
+
+      if (error instanceof AxiosError) {
+        throw ErrorHandler.handleNetworkError(error);
+      }
+
+      throw new LifeUpError(
+        `Unexpected error adding shop item: ${(error as Error).message}`,
+        'UNKNOWN_ERROR',
+        `An unexpected error occurred while adding the shop item.`,
+        false
+      );
+    }
+  }
+
+  /**
+   * Edit an existing shop item
+   */
+  async editShopItem(request: Types.EditShopItemRequest): Promise<Types.HttpResponse> {
+    try {
+      const url = this.buildEditShopItemUrl(request);
+      const response = await this.executeUrlScheme(url);
+
+      if (response.code === RESPONSE_CODE.SUCCESS) {
+        return response;
+      }
+
+      throw new LifeUpError(
+        `Failed to edit shop item: ${response.message}`,
+        'ITEM_EDIT_FAILED',
+        `Could not edit shop item: ${response.message}`,
+        false
+      );
+    } catch (error) {
+      if (error instanceof LifeUpError) {
+        throw error;
+      }
+
+      if (error instanceof AxiosError) {
+        throw ErrorHandler.handleNetworkError(error);
+      }
+
+      throw new LifeUpError(
+        `Unexpected error editing shop item: ${(error as Error).message}`,
+        'UNKNOWN_ERROR',
+        `An unexpected error occurred while editing the shop item.`,
+        false
+      );
+    }
+  }
+
+  /**
+   * Apply a penalty
+   */
+  async applyPenalty(request: Types.ApplyPenaltyRequest): Promise<Types.HttpResponse> {
+    try {
+      const url = this.buildPenaltyUrl(request);
+      const response = await this.executeUrlScheme(url);
+
+      if (response.code === RESPONSE_CODE.SUCCESS) {
+        return response;
+      }
+
+      throw new LifeUpError(
+        `Failed to apply penalty: ${response.message}`,
+        'PENALTY_FAILED',
+        `Could not apply penalty: ${response.message}`,
+        false
+      );
+    } catch (error) {
+      if (error instanceof LifeUpError) {
+        throw error;
+      }
+
+      if (error instanceof AxiosError) {
+        throw ErrorHandler.handleNetworkError(error);
+      }
+
+      throw new LifeUpError(
+        `Unexpected error applying penalty: ${(error as Error).message}`,
+        'UNKNOWN_ERROR',
+        `An unexpected error occurred while applying the penalty.`,
+        false
+      );
+    }
+  }
+
+  /**
+   * Edit a skill
+   */
+  async editSkill(request: Types.EditSkillRequest): Promise<Types.HttpResponse> {
+    try {
+      const url = this.buildEditSkillUrl(request);
+      const response = await this.executeUrlScheme(url);
+
+      if (response.code === RESPONSE_CODE.SUCCESS) {
+        return response;
+      }
+
+      throw new LifeUpError(
+        `Failed to edit skill: ${response.message}`,
+        'SKILL_EDIT_FAILED',
+        `Could not edit skill: ${response.message}`,
+        false
+      );
+    } catch (error) {
+      if (error instanceof LifeUpError) {
+        throw error;
+      }
+
+      if (error instanceof AxiosError) {
+        throw ErrorHandler.handleNetworkError(error);
+      }
+
+      throw new LifeUpError(
+        `Unexpected error editing skill: ${(error as Error).message}`,
+        'UNKNOWN_ERROR',
+        `An unexpected error occurred while editing the skill.`,
+        false
+      );
+    }
+  }
+
+  /**
+   * Build edit task URL
+   */
+  private buildEditTaskUrl(request: Types.EditTaskRequest): string {
+    const params = new URLSearchParams();
+
+    // Task identifiers (at least one required)
+    if (request.id !== undefined) params.append('id', String(request.id));
+    if (request.gid !== undefined) params.append('gid', String(request.gid));
+    if (request.name !== undefined) params.append('name', request.name);
+
+    // Task properties
+    if (request.todo !== undefined) params.append('todo', request.todo);
+    if (request.notes !== undefined) params.append('notes', request.notes);
+    if (request.coin !== undefined) params.append('coin', String(request.coin));
+    if (request.coin_var !== undefined) params.append('coin_var', String(request.coin_var));
+    if (request.exp !== undefined) params.append('exp', String(request.exp));
+
+    // Skills array
+    if (request.skills && request.skills.length > 0) {
+      request.skills.forEach(skillId => {
+        params.append('skills', String(skillId));
+      });
+    }
+
+    // Other properties
+    if (request.category !== undefined) params.append('category', String(request.category));
+    if (request.frequency !== undefined) params.append('frequency', String(request.frequency));
+    if (request.importance !== undefined) params.append('importance', String(request.importance));
+    if (request.difficulty !== undefined) params.append('difficulty', String(request.difficulty));
+    if (request.deadline !== undefined) params.append('deadline', String(request.deadline));
+    if (request.remind_time !== undefined) params.append('remind_time', String(request.remind_time));
+    if (request.start_time !== undefined) params.append('start_time', String(request.start_time));
+
+    // Color encoding
+    if (request.color) {
+      params.append('color', request.color.replace('#', '%23'));
+    }
+
+    // Background settings
+    if (request.background_url !== undefined) params.append('background_url', request.background_url);
+    if (request.background_alpha !== undefined) params.append('background_alpha', String(request.background_alpha));
+    if (request.enable_outline !== undefined) params.append('enable_outline', request.enable_outline ? 'true' : 'false');
+    if (request.use_light_remark_text_color !== undefined) {
+      params.append('use_light_remark_text_color', request.use_light_remark_text_color ? 'true' : 'false');
+    }
+
+    // Item rewards
+    if (request.item_id !== undefined) params.append('item_id', String(request.item_id));
+    if (request.item_name !== undefined) params.append('item_name', request.item_name);
+    if (request.item_amount !== undefined) params.append('item_amount', String(request.item_amount));
+    if (request.items && request.items.length > 0) {
+      params.append('items', JSON.stringify(request.items));
+    }
+
+    // Other flags
+    if (request.auto_use_item !== undefined) params.append('auto_use_item', request.auto_use_item ? 'true' : 'false');
+    if (request.frozen !== undefined) params.append('frozen', request.frozen ? 'true' : 'false');
+
+    return `${LIFEUP_URL_SCHEMES.TASK_EDIT}?${params.toString().replace(/\+/g, '%20')}`;
+  }
+
+  /**
+   * Build add shop item URL
+   */
+  private buildAddShopItemUrl(request: Types.AddShopItemRequest): string {
+    const params = new URLSearchParams();
+
+    // Required
+    params.append('name', request.name);
+
+    // Optional properties
+    if (request.desc !== undefined) params.append('desc', request.desc);
+    if (request.icon !== undefined) params.append('icon', request.icon);
+
+    // Color encoding
+    if (request.title_color_string) {
+      params.append('title_color_string', request.title_color_string.replace('#', '%23'));
+    }
+
+    if (request.price !== undefined) params.append('price', String(request.price));
+    if (request.stock_number !== undefined) params.append('stock_number', String(request.stock_number));
+    if (request.action_text !== undefined) params.append('action_text', request.action_text);
+    if (request.disable_purchase !== undefined) params.append('disable_purchase', request.disable_purchase ? 'true' : 'false');
+    if (request.disable_use !== undefined) params.append('disable_use', request.disable_use ? 'true' : 'false');
+    if (request.category !== undefined) params.append('category', String(request.category));
+    if (request.order !== undefined) params.append('order', String(request.order));
+
+    // JSON parameters
+    if (request.purchase_limit && request.purchase_limit.length > 0) {
+      params.append('purchase_limit', JSON.stringify(request.purchase_limit));
+    }
+    if (request.effects && request.effects.length > 0) {
+      params.append('effects', JSON.stringify(request.effects));
+    }
+
+    if (request.own_number !== undefined) params.append('own_number', String(request.own_number));
+    if (request.unlist !== undefined) params.append('unlist', request.unlist ? 'true' : 'false');
+
+    return `${LIFEUP_URL_SCHEMES.ITEM}?${params.toString().replace(/\+/g, '%20')}`;
+  }
+
+  /**
+   * Build edit shop item URL
+   */
+  private buildEditShopItemUrl(request: Types.EditShopItemRequest): string {
+    const params = new URLSearchParams();
+
+    // Identifiers
+    if (request.id !== undefined) params.append('id', String(request.id));
+    if (request.name !== undefined) params.append('name', request.name);
+
+    // Set properties
+    if (request.set_name !== undefined) params.append('set_name', request.set_name);
+    if (request.set_desc !== undefined) params.append('set_desc', request.set_desc);
+    if (request.set_icon !== undefined) params.append('set_icon', request.set_icon);
+    if (request.set_price !== undefined) params.append('set_price', String(request.set_price));
+    if (request.set_price_type !== undefined) params.append('set_price_type', request.set_price_type);
+
+    // Adjustment properties
+    if (request.own_number !== undefined) params.append('own_number', String(request.own_number));
+    if (request.own_number_type !== undefined) params.append('own_number_type', request.own_number_type);
+    if (request.stock_number !== undefined) params.append('stock_number', String(request.stock_number));
+    if (request.stock_number_type !== undefined) params.append('stock_number_type', request.stock_number_type);
+
+    // Boolean flags
+    if (request.disable_purchase !== undefined) params.append('disable_purchase', request.disable_purchase ? 'true' : 'false');
+    if (request.disable_use !== undefined) params.append('disable_use', request.disable_use ? 'true' : 'false');
+
+    // Other properties
+    if (request.action_text !== undefined) params.append('action_text', request.action_text);
+
+    // Color encoding
+    if (request.title_color_string) {
+      params.append('title_color_string', request.title_color_string.replace('#', '%23'));
+    }
+
+    // JSON parameters
+    if (request.effects && request.effects.length > 0) {
+      params.append('effects', JSON.stringify(request.effects));
+    }
+    if (request.purchase_limit && request.purchase_limit.length > 0) {
+      params.append('purchase_limit', JSON.stringify(request.purchase_limit));
+    }
+
+    if (request.category_id !== undefined) params.append('category_id', String(request.category_id));
+    if (request.order !== undefined) params.append('order', String(request.order));
+    if (request.unlist !== undefined) params.append('unlist', request.unlist ? 'true' : 'false');
+
+    return `${LIFEUP_URL_SCHEMES.ITEM}?${params.toString().replace(/\+/g, '%20')}`;
+  }
+
+  /**
+   * Build penalty URL
+   */
+  private buildPenaltyUrl(request: Types.ApplyPenaltyRequest): string {
+    const params = new URLSearchParams();
+
+    // Required
+    params.append('type', request.type);
+    params.append('content', request.content);
+    params.append('number', String(request.number));
+
+    // Skills array (for exp type)
+    if (request.skills && request.skills.length > 0) {
+      request.skills.forEach(skillId => {
+        params.append('skills', String(skillId));
+      });
+    }
+
+    // Item identifiers (for item type)
+    if (request.item_id !== undefined) params.append('item_id', String(request.item_id));
+    if (request.item_name !== undefined) params.append('item_name', request.item_name);
+
+    // Optional flags
+    if (request.silent !== undefined) params.append('silent', request.silent ? 'true' : 'false');
+
+    return `${LIFEUP_URL_SCHEMES.PENALTY}?${params.toString().replace(/\+/g, '%20')}`;
+  }
+
+  /**
+   * Build edit skill URL
+   */
+  private buildEditSkillUrl(request: Types.EditSkillRequest): string {
+    const params = new URLSearchParams();
+
+    // Identifier (for editing/deleting)
+    if (request.id !== undefined) params.append('id', String(request.id));
+
+    // Skill properties
+    if (request.content !== undefined) params.append('content', request.content);
+    if (request.desc !== undefined) params.append('desc', request.desc);
+    if (request.icon !== undefined) params.append('icon', request.icon);
+
+    // Color encoding
+    if (request.color) {
+      params.append('color', request.color.replace('#', '%23'));
+    }
+
+    if (request.type !== undefined) params.append('type', String(request.type));
+    if (request.order !== undefined) params.append('order', String(request.order));
+    if (request.status !== undefined) params.append('status', String(request.status));
+    if (request.exp !== undefined) params.append('exp', String(request.exp));
+    if (request.delete !== undefined) params.append('delete', request.delete ? 'true' : 'false');
+
+    return `${LIFEUP_URL_SCHEMES.SKILL}?${params.toString().replace(/\+/g, '%20')}`;
+  }
 }
 
 // Singleton instance
