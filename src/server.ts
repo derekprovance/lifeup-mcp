@@ -132,6 +132,10 @@ class LifeUpServer {
               result = await AchievementTools.matchTaskToAchievements(request.params.arguments);
               break;
 
+            case 'list_achievement_categories':
+              result = await AchievementTools.listAchievementCategories();
+              break;
+
             case 'list_skills':
               result = await UserInfoTools.listSkills();
               break;
@@ -368,6 +372,16 @@ class LifeUpServer {
             },
           },
           required: ['taskName'],
+        },
+      },
+      {
+        name: 'list_achievement_categories',
+        description:
+          'List all achievement categories. Categories help organize achievements and are needed when creating new achievements. ' +
+          'Shows category names, IDs, and descriptions.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
         },
       },
       {

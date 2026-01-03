@@ -283,25 +283,60 @@ export class LifeUpClient {
   }
 
   /**
-   * Get all achievements (may fail with code 10002 in some versions)
+   * Get achievements in a specific category
+   * @param categoryId - The achievement category ID
+   * @returns Array of achievements, or empty array if fetch fails
    */
-  async getAchievements(): Promise<Types.Achievement[] | null> {
+  private async getAchievementsByCategory(categoryId: number): Promise<Types.Achievement[]> {
     try {
       const response = await this.axiosInstance.get<Types.HttpResponse<Types.Achievement[]>>(
-        API_ENDPOINTS.ACHIEVEMENTS
+        API_ENDPOINTS.ACHIEVEMENTS_BY_CATEGORY(categoryId)
       );
 
       if (response.data.code === RESPONSE_CODE.SUCCESS && Array.isArray(response.data.data)) {
         return response.data.data;
       }
 
-      // If error code is 10002, return null to indicate fallback needed
-      if (response.data.code === RESPONSE_CODE.CONTENT_PROVIDER_ERROR) {
-        this.configManager.logIfDebug('Achievement endpoint returned 10002, using categories as fallback');
+      return [];
+    } catch (error) {
+      // Gracefully handle per-category failures - don't block entire operation
+      this.configManager.logIfDebug(`Failed to fetch achievements for category ${categoryId}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Get all achievements by fetching from all categories
+   * Note: This makes N+1 requests where N is the number of achievement categories
+   * Returns null if categories are unavailable (triggers fallback to showing categories)
+   */
+  async getAchievements(): Promise<Types.Achievement[] | null> {
+    try {
+      this.configManager.logIfDebug('Fetching achievements from all categories');
+
+      // Step 1: Get all achievement categories
+      const categories = await this.getAchievementCategories();
+
+      if (categories.length === 0) {
+        this.configManager.logIfDebug('No achievement categories found');
         return null;
       }
 
-      return [];
+      this.configManager.logIfDebug(`Found ${categories.length} achievement categories`);
+
+      // Step 2: Fetch achievements from all categories in parallel
+      const achievementPromises = categories.map(category =>
+        this.getAchievementsByCategory(category.id)
+      );
+
+      const achievementArrays = await Promise.all(achievementPromises);
+
+      // Step 3: Flatten and combine all achievements
+      const allAchievements = achievementArrays.flat();
+
+      this.configManager.logIfDebug(`Fetched ${allAchievements.length} total achievements from ${categories.length} categories`);
+
+      return allAchievements.length > 0 ? allAchievements : null;
     } catch (error) {
       if (error instanceof AxiosError) {
         const lifeupError = ErrorHandler.handleApiError(error, 'getAchievements');
@@ -465,14 +500,17 @@ export class LifeUpClient {
   async updateAchievement(request: Types.UpdateAchievementRequest): Promise<Types.HttpResponse> {
     try {
       const url = this.buildAchievementUrl(request);
+      this.configManager.logIfDebug('Updating achievement with URL:', url);
       const response = await this.executeUrlScheme(url);
+
+      this.configManager.logIfDebug('Update achievement response:', response);
 
       if (response.code === RESPONSE_CODE.SUCCESS) {
         return response;
       }
 
       throw new LifeUpError(
-        `Failed to update achievement: ${response.message}`,
+        `Failed to update achievement: ${response.message} (Code: ${response.code})`,
         'ACHIEVEMENT_UPDATE_FAILED',
         `Could not update achievement: ${response.message}`,
         false

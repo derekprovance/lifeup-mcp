@@ -45,7 +45,8 @@ LifeUp Cloud API (Android Device)
 - Calls `lifeupClient` methods and wraps results in error handling
 
 **tools/achievement-tools.ts** - Achievement querying, matching, and management
-- `listAchievements` - Lists achievements with fallback to categories if endpoint unavailable
+- `listAchievements` - Lists all achievements by fetching from all categories (N+1 requests where N=category count), with fallback to categories if unavailable
+- `listAchievementCategories` - Lists all achievement categories with IDs and descriptions
 - `matchTaskToAchievements` - Keyword-based matching algorithm to suggest relevant achievements for a task
 - `createAchievement` - Create new custom achievements with optional unlock conditions and rewards
 - `updateAchievement` - Modify existing achievement properties (name, description, conditions, rewards)
@@ -295,7 +296,7 @@ The server wraps LifeUp Cloud's HTTP API. Key integration points:
 
 - **Task Management** - Uses `/tasks`, `/history`, and task categories endpoints
 - **Task Creation** - Uses `lifeup://api/add_task` URL scheme via `/api` endpoint
-- **Achievements** - Uses `/achievements` with fallback to `/achievement_categories` for querying
+- **Achievements** - Fetches from all categories using `/achievement_categories` and `/achievements/{category_id}` endpoints for querying
 - **Achievement Management** - Uses `lifeup://api/achievement` URL scheme for CRUD operations (create/update/delete)
 - **Skills** - Reads from `/skills` endpoint for character progression
 - **Shop & Items** - Uses `/items` and `/items_categories` endpoints for inventory browsing

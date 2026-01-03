@@ -342,6 +342,8 @@ export class AchievementTools {
 
       const response = await lifeupClient.updateAchievement(validated);
 
+      configManager.logIfDebug('Achievement update response:', response);
+
       let result = `✓ Achievement updated successfully!\n\n`;
       result += `**Achievement ID**: ${validated.edit_id}\n`;
 
@@ -352,7 +354,10 @@ export class AchievementTools {
       if (validated.exp !== undefined) updates.push('experience reward');
       if (validated.coin !== undefined) updates.push('coin reward');
       if (validated.skills) updates.push('skill rewards');
+      if (validated.color !== undefined) updates.push(`color to ${validated.color}`);
       if (validated.unlocked !== undefined) updates.push(`unlock status to ${validated.unlocked ? 'unlocked' : 'locked'}`);
+      if (validated.coin_set_type) updates.push(`coin set type to ${validated.coin_set_type}`);
+      if (validated.exp_set_type) updates.push(`experience set type to ${validated.exp_set_type}`);
 
       if (updates.length > 0) {
         result += `**Updated**: ${updates.join(', ')}\n`;
@@ -383,6 +388,31 @@ export class AchievementTools {
       );
     } catch (error) {
       return handleToolError(error, 'deleting achievement');
+    }
+  }
+
+  /**
+   * List all achievement categories
+   */
+  static async listAchievementCategories(): Promise<string> {
+    try {
+      await ensureServerHealthy();
+
+      const categories = await lifeupClient.getAchievementCategories();
+
+      if (categories.length === 0) {
+        return 'No achievement categories found.';
+      }
+
+      let result = `## Achievement Categories\n\n`;
+      categories.forEach((category) => {
+        result += `- **${category.name}** (ID: ${category.id})\n`;
+        if (category.desc) result += `  ${category.desc}\n`;
+      });
+
+      return result;
+    } catch (error) {
+      return handleToolError(error, 'fetching achievement categories');
     }
   }
 }
