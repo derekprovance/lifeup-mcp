@@ -23,24 +23,32 @@ export interface LifeUpConfig {
   debug: boolean;
 }
 
-class ConfigManager {
+export class ConfigManager {
   private config: LifeUpConfig;
 
-  constructor() {
-    const host = process.env.LIFEUP_HOST || DEFAULT_CONFIG.HOST;
-    const port = parseInt(process.env.LIFEUP_PORT || String(DEFAULT_CONFIG.PORT), 10);
-    const apiToken = process.env.LIFEUP_API_TOKEN;
-    const debug = process.env.DEBUG === 'true';
+  constructor(overrides?: Partial<LifeUpConfig>) {
+    const host = overrides?.host || process.env.LIFEUP_HOST || DEFAULT_CONFIG.HOST;
+    const port = overrides?.port || parseInt(process.env.LIFEUP_PORT || String(DEFAULT_CONFIG.PORT), 10);
+    const apiToken = overrides?.apiToken || process.env.LIFEUP_API_TOKEN;
+    const debug = overrides?.debug ?? (process.env.DEBUG === 'true');
 
     this.config = {
       host,
       port,
       apiToken: apiToken && apiToken.trim() ? apiToken : undefined,
-      baseUrl: `http://${host}:${port}`,
-      timeout: DEFAULT_CONFIG.TIMEOUT,
-      retries: DEFAULT_CONFIG.RETRIES,
+      baseUrl: overrides?.baseUrl || `http://${host}:${port}`,
+      timeout: overrides?.timeout || DEFAULT_CONFIG.TIMEOUT,
+      retries: overrides?.retries || DEFAULT_CONFIG.RETRIES,
       debug,
     };
+  }
+
+  /**
+   * Factory method for creating ConfigManager instances with overrides
+   * Useful for testing where you want to provide custom configuration
+   */
+  static create(overrides?: Partial<LifeUpConfig>): ConfigManager {
+    return new ConfigManager(overrides);
   }
 
   getConfig(): LifeUpConfig {
@@ -76,5 +84,13 @@ class ConfigManager {
   }
 }
 
-// Singleton instance
+// Singleton instance (production)
 export const configManager = new ConfigManager();
+
+/**
+ * Factory function for creating test ConfigManager instances
+ * Used in tests to provide custom configuration without affecting the singleton
+ */
+export function createTestConfig(overrides?: Partial<LifeUpConfig>): ConfigManager {
+  return ConfigManager.create(overrides);
+}

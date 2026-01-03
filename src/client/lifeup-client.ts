@@ -4,22 +4,36 @@
  */
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import { configManager } from '../config/config.js';
+import { configManager, ConfigManager } from '../config/config.js';
 import { ErrorHandler, LifeUpError } from '../error/error-handler.js';
 import { API_ENDPOINTS, RESPONSE_CODE, LIFEUP_URL_SCHEMES } from './constants.js';
 import * as Types from './types.js';
 
 export class LifeUpClient {
   private axiosInstance: AxiosInstance;
+  private configManager: ConfigManager;
 
-  constructor() {
-    const config = configManager.getConfig();
+  constructor(config?: ConfigManager, axiosInstance?: AxiosInstance) {
+    this.configManager = config || configManager;
 
-    this.axiosInstance = axios.create({
-      baseURL: config.baseUrl,
-      timeout: config.timeout,
-      headers: this.buildHeaders(),
-    });
+    if (axiosInstance) {
+      this.axiosInstance = axiosInstance;
+    } else {
+      const cfg = this.configManager.getConfig();
+      this.axiosInstance = axios.create({
+        baseURL: cfg.baseUrl,
+        timeout: cfg.timeout,
+        headers: this.buildHeaders(),
+      });
+    }
+  }
+
+  /**
+   * Factory method for creating LifeUpClient instances with custom dependencies
+   * Useful for testing where you want to inject mock dependencies
+   */
+  static create(config?: ConfigManager, axiosInstance?: AxiosInstance): LifeUpClient {
+    return new LifeUpClient(config, axiosInstance);
   }
 
   private buildHeaders(): Record<string, string> {
@@ -27,7 +41,7 @@ export class LifeUpClient {
       'Content-Type': 'application/json',
     };
 
-    const token = configManager.getApiToken();
+    const token = this.configManager.getApiToken();
     if (token) {
       headers['Authorization'] = token;
     }
@@ -43,7 +57,7 @@ export class LifeUpClient {
       const response = await this.axiosInstance.get('/');
       return response.status === 200;
     } catch (error) {
-      configManager.logIfDebug('Health check failed', error);
+      this.configManager.logIfDebug('Health check failed', error);
       return false;
     }
   }
@@ -54,7 +68,7 @@ export class LifeUpClient {
   async createTask(request: Types.CreateTaskRequest): Promise<Types.Task | null> {
     try {
       const params = this.buildTaskUrl(request);
-      configManager.logIfDebug('Creating task with params:', params);
+      this.configManager.logIfDebug('Creating task with params:', params);
 
       const response = await this.executeUrlScheme(params);
 
@@ -127,12 +141,12 @@ export class LifeUpClient {
    */
   private async executeUrlScheme(url: string): Promise<Types.HttpResponse> {
     try {
-      configManager.logIfDebug(`Executing URL scheme via ${API_ENDPOINTS.API_GATEWAY}`, { url });
+      this.configManager.logIfDebug(`Executing URL scheme via ${API_ENDPOINTS.API_GATEWAY}`, { url });
       const response = await this.axiosInstance.post(API_ENDPOINTS.API_GATEWAY, { url });
-      configManager.logIfDebug(`URL scheme response:`, response.data);
+      this.configManager.logIfDebug(`URL scheme response:`, response.data);
       return response.data;
     } catch (error) {
-      configManager.logIfDebug(`URL scheme error:`, error instanceof AxiosError ? error.message : error);
+      this.configManager.logIfDebug(`URL scheme error:`, error instanceof AxiosError ? error.message : error);
       if (error instanceof AxiosError) {
         throw ErrorHandler.handleNetworkError(error);
       }
@@ -283,7 +297,7 @@ export class LifeUpClient {
 
       // If error code is 10002, return null to indicate fallback needed
       if (response.data.code === RESPONSE_CODE.CONTENT_PROVIDER_ERROR) {
-        configManager.logIfDebug('Achievement endpoint returned 10002, using categories as fallback');
+        this.configManager.logIfDebug('Achievement endpoint returned 10002, using categories as fallback');
         return null;
       }
 
@@ -291,7 +305,7 @@ export class LifeUpClient {
     } catch (error) {
       if (error instanceof AxiosError) {
         const lifeupError = ErrorHandler.handleApiError(error, 'getAchievements');
-        configManager.logIfDebug('Achievement fetch error:', lifeupError.message);
+        this.configManager.logIfDebug('Achievement fetch error:', lifeupError.message);
         return null; // Graceful fallback
       }
       return null;
@@ -992,5 +1006,16 @@ export class LifeUpClient {
   }
 }
 
-// Singleton instance
+// Singleton instance (production)
 export const lifeupClient = new LifeUpClient();
+
+/**
+ * Factory function for creating test LifeUpClient instances
+ * Used in tests to provide mock ConfigManager and axios instances
+ */
+export function createTestClient(
+  config?: ConfigManager,
+  axiosInstance?: AxiosInstance
+): LifeUpClient {
+  return LifeUpClient.create(config, axiosInstance);
+}

@@ -12,7 +12,12 @@
     "watch": "tsc --watch",
     "start": "node build/index.js",
     "dev": "tsx watch src/index.ts",
-    "inspect": "node build/index.js"
+    "inspect": "node build/index.js",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "test:run": "vitest run"
   },
   "keywords": [
     "mcp",
@@ -30,7 +35,10 @@
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "@vitest/ui": "^2.0.0",
     "typescript": "^5.3.3",
-    "tsx": "^4.7.0"
+    "tsx": "^4.7.0",
+    "vitest": "^2.0.0"
   }
 }
