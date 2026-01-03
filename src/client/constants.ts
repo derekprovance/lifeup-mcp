@@ -56,6 +56,15 @@ export const RESPONSE_CODE = {
   CONTENT_PROVIDER_ERROR: 10002,
 } as const;
 
+// LifeUp version numbers for feature compatibility checks
+// Format: XXYZZAAA where XX=major, Y=minor, ZZ=patch, AAA=build
+// Example: v1.98.0 = 10980000, v1.101.4 = 11010490
+export const LIFEUP_VERSION = {
+  V1_98_0: 10980000,
+  V1_100_4: 11000400,
+  V1_101_0: 11010000,
+} as const;
+
 // Default configuration
 export const DEFAULT_CONFIG = {
   HOST: 'localhost',

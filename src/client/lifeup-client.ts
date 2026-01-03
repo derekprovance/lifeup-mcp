@@ -6,7 +6,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { configManager, ConfigManager } from '../config/config.js';
 import { ErrorHandler, LifeUpError } from '../error/error-handler.js';
-import { API_ENDPOINTS, RESPONSE_CODE, LIFEUP_URL_SCHEMES } from './constants.js';
+import { API_ENDPOINTS, RESPONSE_CODE, LIFEUP_URL_SCHEMES, LIFEUP_VERSION } from './constants.js';
 import * as Types from './types.js';
 
 export class LifeUpClient {
@@ -142,7 +142,7 @@ export class LifeUpClient {
   private async executeUrlScheme(url: string): Promise<Types.HttpResponse> {
     try {
       this.configManager.logIfDebug(`Executing URL scheme via ${API_ENDPOINTS.API_GATEWAY}`, { url });
-      const response = await this.axiosInstance.post(API_ENDPOINTS.API_GATEWAY, { url });
+      const response = await this.axiosInstance.post(API_ENDPOINTS.API_GATEWAY, { urls: [url] });
       this.configManager.logIfDebug(`URL scheme response:`, response.data);
       return response.data;
     } catch (error) {
@@ -428,6 +428,7 @@ export class LifeUpClient {
   async createAchievement(request: Types.CreateAchievementRequest): Promise<Types.HttpResponse> {
     try {
       const url = this.buildAchievementUrl(request);
+      this.configManager.logIfDebug('Creating achievement with URL:', url);
       const response = await this.executeUrlScheme(url);
 
       if (response.code === RESPONSE_CODE.SUCCESS) {
@@ -543,7 +544,7 @@ export class LifeUpClient {
 
     // Required for create, optional for update
     if (request.name) params.append('name', request.name);
-    if (request.category_id) params.append('category_id', String(request.category_id));
+    if (request.category_id !== undefined) params.append('category_id', String(request.category_id));
 
     // Optional fields
     if (request.desc) params.append('desc', request.desc);
@@ -587,9 +588,9 @@ export class LifeUpClient {
       params.append('write_feeling', request.write_feeling ? 'true' : 'false');
     }
 
-    // Color (must encode # as %23)
+    // Color (URLSearchParams handles encoding automatically)
     if (request.color) {
-      params.append('color', request.color.replace('#', '%23'));
+      params.append('color', request.color);
     }
 
     const url = `${LIFEUP_URL_SCHEMES.ACHIEVEMENT}?${params.toString().replace(/\+/g, '%20')}`;
@@ -789,10 +790,10 @@ export class LifeUpClient {
   }
 
   /**
-   * Helper to encode hex color for URL (# → %23)
+   * Helper to encode hex color for URL (URLSearchParams handles encoding)
    */
   private encodeColor(color: string): string {
-    return color.replace('#', '%23');
+    return color;
   }
 
   /**

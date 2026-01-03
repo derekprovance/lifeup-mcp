@@ -45,12 +45,11 @@ LifeUp Cloud API (Android Device)
 - Calls `lifeupClient` methods and wraps results in error handling
 
 **tools/achievement-tools.ts** - Achievement querying, matching, and management
-- `listAchievements` - Lists achievements with fallback to categories
-- `matchTaskToAchievements` - Keyword-based matching algorithm
-- `createAchievement` - Create new custom achievements with conditions and rewards
-- `updateAchievement` - Update existing achievement properties by ID
-- `deleteAchievement` - Delete achievements by ID
-- Includes helper methods for keyword extraction and confidence scoring
+- `listAchievements` - Lists achievements with fallback to categories if endpoint unavailable
+- `matchTaskToAchievements` - Keyword-based matching algorithm to suggest relevant achievements for a task
+- `createAchievement` - Create new custom achievements with optional unlock conditions and rewards
+- `updateAchievement` - Modify existing achievement properties (name, description, conditions, rewards)
+- `deleteAchievement` - Delete achievement definitions permanently
 
 **tools/user-info-tools.ts** - User profile and character information
 - `listSkills` - Lists all skills with levels, experience, and progress to next level
@@ -258,18 +257,17 @@ Timeout, retries, and other runtime config defined in src/config/config.ts:
 
 ## Testing Strategy
 
-The project includes a basic test suite (test-mcp.js) that verifies:
-1. Server startup
-2. All 20 tools are registered (14 tools when SAFE_MODE=true: 11 read-only + 3 create)
-3. Input validation rejects invalid requests
-4. Error handling works for connectivity issues
+The project includes automated tests using Vitest that verify:
+1. Input validation rejects invalid requests
+2. Error handling works correctly
+3. Achievement matching algorithm functions properly
 
-Run with: `node test-mcp.js`
+Run with: `npm run test:run`
 
-No other automated tests exist. Future enhancements could include:
-- Unit tests for validation schemas
-- Integration tests for tool execution
-- Mock tests for API client
+Additional tests:
+- `npm run test:watch` - Run tests in watch mode
+- `npm run test:coverage` - Generate coverage report
+- `npm run test:ui` - Run tests with UI
 
 ## Dependencies
 

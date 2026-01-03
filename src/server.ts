@@ -1008,10 +1008,14 @@ class LifeUpServer {
       configManager.logIfDebug('Connecting to stdio transport...');
       await this.server.connect(transport);
       configManager.logIfDebug('LifeUp MCP Server connected via stdio transport');
-
-      // Keep the server running - connect() should block until disconnected
-      // But add a message to confirm we're running
       configManager.logIfDebug('LifeUp MCP Server is now ready to handle requests');
+
+      // Keep the process alive indefinitely
+      // The connect() call sets up the stdio handlers, but the promise resolves
+      // once the connection is established. We need to prevent the process from exiting.
+      await new Promise(() => {
+        // This promise never resolves, keeping the process alive
+      });
     } catch (error) {
       console.error('Error during server connection:', error);
       throw error;
