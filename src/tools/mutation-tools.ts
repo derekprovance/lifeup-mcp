@@ -21,6 +21,37 @@ import { ZodError } from 'zod';
 
 export class MutationTools {
   /**
+   * Helper to ensure LifeUp server is reachable
+   */
+  private static async ensureServerHealthy(): Promise<void> {
+    const isHealthy = await lifeupClient.healthCheck();
+    if (!isHealthy) {
+      throw new LifeUpError(
+        'LifeUp server is unreachable',
+        'SERVER_UNREACHABLE',
+        'The LifeUp server is not responding.',
+        true
+      );
+    }
+  }
+
+  /**
+   * Helper to handle errors from tool execution
+   */
+  private static handleError(error: unknown, context: string): string {
+    if (error instanceof LifeUpError) {
+      return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
+    }
+
+    if (error instanceof ZodError) {
+      const messages = error.issues.map((e) => `- ${e.path.join('.')}: ${e.message}`).join('\n');
+      return `❌ Invalid input:\n${messages}`;
+    }
+
+    return `❌ Unexpected error ${context}: ${(error as Error).message}`;
+  }
+
+  /**
    * Edit an existing task
    */
   static async editTask(input: unknown): Promise<string> {
@@ -28,15 +59,7 @@ export class MutationTools {
       const validated = EditTaskSchema.parse(input);
       configManager.logIfDebug('Editing task:', validated);
 
-      const isHealthy = await lifeupClient.healthCheck();
-      if (!isHealthy) {
-        throw new LifeUpError(
-          'LifeUp server is unreachable',
-          'SERVER_UNREACHABLE',
-          'The LifeUp server is not responding.',
-          true
-        );
-      }
+      await this.ensureServerHealthy();
 
       const response = await lifeupClient.editTask(validated);
 
@@ -62,16 +85,7 @@ export class MutationTools {
 
       return result;
     } catch (error) {
-      if (error instanceof LifeUpError) {
-        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
-      }
-
-      if (error instanceof ZodError) {
-        const messages = error.issues.map((e) => `- ${e.path.join('.')}: ${e.message}`).join('\n');
-        return `❌ Invalid input:\n${messages}`;
-      }
-
-      return `❌ Unexpected error editing task: ${(error as Error).message}`;
+      return this.handleError(error, 'editing task');
     }
   }
 
@@ -83,15 +97,7 @@ export class MutationTools {
       const validated = AddShopItemSchema.parse(input);
       configManager.logIfDebug('Adding shop item:', validated);
 
-      const isHealthy = await lifeupClient.healthCheck();
-      if (!isHealthy) {
-        throw new LifeUpError(
-          'LifeUp server is unreachable',
-          'SERVER_UNREACHABLE',
-          'The LifeUp server is not responding.',
-          true
-        );
-      }
+      await this.ensureServerHealthy();
 
       const response = await lifeupClient.addShopItem(validated);
 
@@ -110,16 +116,7 @@ export class MutationTools {
 
       return result;
     } catch (error) {
-      if (error instanceof LifeUpError) {
-        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
-      }
-
-      if (error instanceof ZodError) {
-        const messages = error.issues.map((e) => `- ${e.path.join('.')}: ${e.message}`).join('\n');
-        return `❌ Invalid input:\n${messages}`;
-      }
-
-      return `❌ Unexpected error adding shop item: ${(error as Error).message}`;
+      return this.handleError(error, 'adding shop item');
     }
   }
 
@@ -131,15 +128,7 @@ export class MutationTools {
       const validated = EditShopItemSchema.parse(input);
       configManager.logIfDebug('Editing shop item:', validated);
 
-      const isHealthy = await lifeupClient.healthCheck();
-      if (!isHealthy) {
-        throw new LifeUpError(
-          'LifeUp server is unreachable',
-          'SERVER_UNREACHABLE',
-          'The LifeUp server is not responding.',
-          true
-        );
-      }
+      await this.ensureServerHealthy();
 
       const response = await lifeupClient.editShopItem(validated);
 
@@ -162,16 +151,7 @@ export class MutationTools {
 
       return result;
     } catch (error) {
-      if (error instanceof LifeUpError) {
-        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
-      }
-
-      if (error instanceof ZodError) {
-        const messages = error.issues.map((e) => `- ${e.path.join('.')}: ${e.message}`).join('\n');
-        return `❌ Invalid input:\n${messages}`;
-      }
-
-      return `❌ Unexpected error editing shop item: ${(error as Error).message}`;
+      return this.handleError(error, 'editing shop item');
     }
   }
 
@@ -183,15 +163,7 @@ export class MutationTools {
       const validated = ApplyPenaltySchema.parse(input);
       configManager.logIfDebug('Applying penalty:', validated);
 
-      const isHealthy = await lifeupClient.healthCheck();
-      if (!isHealthy) {
-        throw new LifeUpError(
-          'LifeUp server is unreachable',
-          'SERVER_UNREACHABLE',
-          'The LifeUp server is not responding.',
-          true
-        );
-      }
+      await this.ensureServerHealthy();
 
       const response = await lifeupClient.applyPenalty(validated);
 
@@ -211,16 +183,7 @@ export class MutationTools {
 
       return result;
     } catch (error) {
-      if (error instanceof LifeUpError) {
-        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
-      }
-
-      if (error instanceof ZodError) {
-        const messages = error.issues.map((e) => `- ${e.path.join('.')}: ${e.message}`).join('\n');
-        return `❌ Invalid input:\n${messages}`;
-      }
-
-      return `❌ Unexpected error applying penalty: ${(error as Error).message}`;
+      return this.handleError(error, 'applying penalty');
     }
   }
 
@@ -232,15 +195,7 @@ export class MutationTools {
       const validated = EditSkillSchema.parse(input);
       configManager.logIfDebug('Editing skill:', validated);
 
-      const isHealthy = await lifeupClient.healthCheck();
-      if (!isHealthy) {
-        throw new LifeUpError(
-          'LifeUp server is unreachable',
-          'SERVER_UNREACHABLE',
-          'The LifeUp server is not responding.',
-          true
-        );
-      }
+      await this.ensureServerHealthy();
 
       const response = await lifeupClient.editSkill(validated);
 
@@ -270,16 +225,7 @@ export class MutationTools {
 
       return result;
     } catch (error) {
-      if (error instanceof LifeUpError) {
-        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
-      }
-
-      if (error instanceof ZodError) {
-        const messages = error.issues.map((e) => `- ${e.path.join('.')}: ${e.message}`).join('\n');
-        return `❌ Invalid input:\n${messages}`;
-      }
-
-      return `❌ Unexpected error editing skill: ${(error as Error).message}`;
+      return this.handleError(error, 'editing skill');
     }
   }
 }

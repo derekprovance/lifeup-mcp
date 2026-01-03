@@ -775,65 +775,100 @@ export class LifeUpClient {
   }
 
   /**
+   * Helper to encode hex color for URL (# → %23)
+   */
+  private encodeColor(color: string): string {
+    return color.replace('#', '%23');
+  }
+
+  /**
+   * Helper to append a field to URLSearchParams if defined
+   */
+  private appendIfDefined(
+    params: URLSearchParams,
+    key: string,
+    value: any,
+    formatter?: (val: any) => string
+  ): void {
+    if (value !== undefined) {
+      const stringValue = formatter ? formatter(value) : String(value);
+      params.append(key, stringValue);
+    }
+  }
+
+  /**
+   * Helper to append array values (for multi-value parameters like skills)
+   */
+  private appendArray(params: URLSearchParams, key: string, values: any[] | undefined): void {
+    if (values && values.length > 0) {
+      values.forEach((val) => {
+        params.append(key, String(val));
+      });
+    }
+  }
+
+  /**
+   * Helper to build final URL with proper encoding
+   */
+  private buildFinalUrl(scheme: string, params: URLSearchParams): string {
+    return `${scheme}?${params.toString().replace(/\+/g, '%20')}`;
+  }
+
+  /**
    * Build edit task URL
    */
   private buildEditTaskUrl(request: Types.EditTaskRequest): string {
     const params = new URLSearchParams();
 
     // Task identifiers (at least one required)
-    if (request.id !== undefined) params.append('id', String(request.id));
-    if (request.gid !== undefined) params.append('gid', String(request.gid));
-    if (request.name !== undefined) params.append('name', request.name);
+    this.appendIfDefined(params, 'id', request.id);
+    this.appendIfDefined(params, 'gid', request.gid);
+    this.appendIfDefined(params, 'name', request.name);
 
     // Task properties
-    if (request.todo !== undefined) params.append('todo', request.todo);
-    if (request.notes !== undefined) params.append('notes', request.notes);
-    if (request.coin !== undefined) params.append('coin', String(request.coin));
-    if (request.coin_var !== undefined) params.append('coin_var', String(request.coin_var));
-    if (request.exp !== undefined) params.append('exp', String(request.exp));
+    this.appendIfDefined(params, 'todo', request.todo);
+    this.appendIfDefined(params, 'notes', request.notes);
+    this.appendIfDefined(params, 'coin', request.coin);
+    this.appendIfDefined(params, 'coin_var', request.coin_var);
+    this.appendIfDefined(params, 'exp', request.exp);
 
     // Skills array
-    if (request.skills && request.skills.length > 0) {
-      request.skills.forEach(skillId => {
-        params.append('skills', String(skillId));
-      });
-    }
+    this.appendArray(params, 'skills', request.skills);
 
     // Other properties
-    if (request.category !== undefined) params.append('category', String(request.category));
-    if (request.frequency !== undefined) params.append('frequency', String(request.frequency));
-    if (request.importance !== undefined) params.append('importance', String(request.importance));
-    if (request.difficulty !== undefined) params.append('difficulty', String(request.difficulty));
-    if (request.deadline !== undefined) params.append('deadline', String(request.deadline));
-    if (request.remind_time !== undefined) params.append('remind_time', String(request.remind_time));
-    if (request.start_time !== undefined) params.append('start_time', String(request.start_time));
+    this.appendIfDefined(params, 'category', request.category);
+    this.appendIfDefined(params, 'frequency', request.frequency);
+    this.appendIfDefined(params, 'importance', request.importance);
+    this.appendIfDefined(params, 'difficulty', request.difficulty);
+    this.appendIfDefined(params, 'deadline', request.deadline);
+    this.appendIfDefined(params, 'remind_time', request.remind_time);
+    this.appendIfDefined(params, 'start_time', request.start_time);
 
     // Color encoding
-    if (request.color) {
-      params.append('color', request.color.replace('#', '%23'));
-    }
+    this.appendIfDefined(
+      params,
+      'color',
+      request.color,
+      (val) => this.encodeColor(val)
+    );
 
     // Background settings
-    if (request.background_url !== undefined) params.append('background_url', request.background_url);
-    if (request.background_alpha !== undefined) params.append('background_alpha', String(request.background_alpha));
-    if (request.enable_outline !== undefined) params.append('enable_outline', request.enable_outline ? 'true' : 'false');
-    if (request.use_light_remark_text_color !== undefined) {
-      params.append('use_light_remark_text_color', request.use_light_remark_text_color ? 'true' : 'false');
-    }
+    this.appendIfDefined(params, 'background_url', request.background_url);
+    this.appendIfDefined(params, 'background_alpha', request.background_alpha);
+    this.appendIfDefined(params, 'enable_outline', request.enable_outline, (val) => val ? 'true' : 'false');
+    this.appendIfDefined(params, 'use_light_remark_text_color', request.use_light_remark_text_color, (val) => val ? 'true' : 'false');
 
     // Item rewards
-    if (request.item_id !== undefined) params.append('item_id', String(request.item_id));
-    if (request.item_name !== undefined) params.append('item_name', request.item_name);
-    if (request.item_amount !== undefined) params.append('item_amount', String(request.item_amount));
-    if (request.items && request.items.length > 0) {
-      params.append('items', JSON.stringify(request.items));
-    }
+    this.appendIfDefined(params, 'item_id', request.item_id);
+    this.appendIfDefined(params, 'item_name', request.item_name);
+    this.appendIfDefined(params, 'item_amount', request.item_amount);
+    this.appendIfDefined(params, 'items', request.items, (val) => JSON.stringify(val));
 
     // Other flags
-    if (request.auto_use_item !== undefined) params.append('auto_use_item', request.auto_use_item ? 'true' : 'false');
-    if (request.frozen !== undefined) params.append('frozen', request.frozen ? 'true' : 'false');
+    this.appendIfDefined(params, 'auto_use_item', request.auto_use_item, (val) => val ? 'true' : 'false');
+    this.appendIfDefined(params, 'frozen', request.frozen, (val) => val ? 'true' : 'false');
 
-    return `${LIFEUP_URL_SCHEMES.TASK_EDIT}?${params.toString().replace(/\+/g, '%20')}`;
+    return this.buildFinalUrl(LIFEUP_URL_SCHEMES.TASK_EDIT, params);
   }
 
   /**
@@ -846,34 +881,25 @@ export class LifeUpClient {
     params.append('name', request.name);
 
     // Optional properties
-    if (request.desc !== undefined) params.append('desc', request.desc);
-    if (request.icon !== undefined) params.append('icon', request.icon);
-
-    // Color encoding
-    if (request.title_color_string) {
-      params.append('title_color_string', request.title_color_string.replace('#', '%23'));
-    }
-
-    if (request.price !== undefined) params.append('price', String(request.price));
-    if (request.stock_number !== undefined) params.append('stock_number', String(request.stock_number));
-    if (request.action_text !== undefined) params.append('action_text', request.action_text);
-    if (request.disable_purchase !== undefined) params.append('disable_purchase', request.disable_purchase ? 'true' : 'false');
-    if (request.disable_use !== undefined) params.append('disable_use', request.disable_use ? 'true' : 'false');
-    if (request.category !== undefined) params.append('category', String(request.category));
-    if (request.order !== undefined) params.append('order', String(request.order));
+    this.appendIfDefined(params, 'desc', request.desc);
+    this.appendIfDefined(params, 'icon', request.icon);
+    this.appendIfDefined(params, 'title_color_string', request.title_color_string, (val) => this.encodeColor(val));
+    this.appendIfDefined(params, 'price', request.price);
+    this.appendIfDefined(params, 'stock_number', request.stock_number);
+    this.appendIfDefined(params, 'action_text', request.action_text);
+    this.appendIfDefined(params, 'disable_purchase', request.disable_purchase, (val) => val ? 'true' : 'false');
+    this.appendIfDefined(params, 'disable_use', request.disable_use, (val) => val ? 'true' : 'false');
+    this.appendIfDefined(params, 'category', request.category);
+    this.appendIfDefined(params, 'order', request.order);
 
     // JSON parameters
-    if (request.purchase_limit && request.purchase_limit.length > 0) {
-      params.append('purchase_limit', JSON.stringify(request.purchase_limit));
-    }
-    if (request.effects && request.effects.length > 0) {
-      params.append('effects', JSON.stringify(request.effects));
-    }
+    this.appendIfDefined(params, 'purchase_limit', request.purchase_limit, (val) => JSON.stringify(val));
+    this.appendIfDefined(params, 'effects', request.effects, (val) => JSON.stringify(val));
 
-    if (request.own_number !== undefined) params.append('own_number', String(request.own_number));
-    if (request.unlist !== undefined) params.append('unlist', request.unlist ? 'true' : 'false');
+    this.appendIfDefined(params, 'own_number', request.own_number);
+    this.appendIfDefined(params, 'unlist', request.unlist, (val) => val ? 'true' : 'false');
 
-    return `${LIFEUP_URL_SCHEMES.ITEM}?${params.toString().replace(/\+/g, '%20')}`;
+    return this.buildFinalUrl(LIFEUP_URL_SCHEMES.ITEM, params);
   }
 
   /**
@@ -883,47 +909,39 @@ export class LifeUpClient {
     const params = new URLSearchParams();
 
     // Identifiers
-    if (request.id !== undefined) params.append('id', String(request.id));
-    if (request.name !== undefined) params.append('name', request.name);
+    this.appendIfDefined(params, 'id', request.id);
+    this.appendIfDefined(params, 'name', request.name);
 
     // Set properties
-    if (request.set_name !== undefined) params.append('set_name', request.set_name);
-    if (request.set_desc !== undefined) params.append('set_desc', request.set_desc);
-    if (request.set_icon !== undefined) params.append('set_icon', request.set_icon);
-    if (request.set_price !== undefined) params.append('set_price', String(request.set_price));
-    if (request.set_price_type !== undefined) params.append('set_price_type', request.set_price_type);
+    this.appendIfDefined(params, 'set_name', request.set_name);
+    this.appendIfDefined(params, 'set_desc', request.set_desc);
+    this.appendIfDefined(params, 'set_icon', request.set_icon);
+    this.appendIfDefined(params, 'set_price', request.set_price);
+    this.appendIfDefined(params, 'set_price_type', request.set_price_type);
 
     // Adjustment properties
-    if (request.own_number !== undefined) params.append('own_number', String(request.own_number));
-    if (request.own_number_type !== undefined) params.append('own_number_type', request.own_number_type);
-    if (request.stock_number !== undefined) params.append('stock_number', String(request.stock_number));
-    if (request.stock_number_type !== undefined) params.append('stock_number_type', request.stock_number_type);
+    this.appendIfDefined(params, 'own_number', request.own_number);
+    this.appendIfDefined(params, 'own_number_type', request.own_number_type);
+    this.appendIfDefined(params, 'stock_number', request.stock_number);
+    this.appendIfDefined(params, 'stock_number_type', request.stock_number_type);
 
     // Boolean flags
-    if (request.disable_purchase !== undefined) params.append('disable_purchase', request.disable_purchase ? 'true' : 'false');
-    if (request.disable_use !== undefined) params.append('disable_use', request.disable_use ? 'true' : 'false');
+    this.appendIfDefined(params, 'disable_purchase', request.disable_purchase, (val) => val ? 'true' : 'false');
+    this.appendIfDefined(params, 'disable_use', request.disable_use, (val) => val ? 'true' : 'false');
 
     // Other properties
-    if (request.action_text !== undefined) params.append('action_text', request.action_text);
-
-    // Color encoding
-    if (request.title_color_string) {
-      params.append('title_color_string', request.title_color_string.replace('#', '%23'));
-    }
+    this.appendIfDefined(params, 'action_text', request.action_text);
+    this.appendIfDefined(params, 'title_color_string', request.title_color_string, (val) => this.encodeColor(val));
 
     // JSON parameters
-    if (request.effects && request.effects.length > 0) {
-      params.append('effects', JSON.stringify(request.effects));
-    }
-    if (request.purchase_limit && request.purchase_limit.length > 0) {
-      params.append('purchase_limit', JSON.stringify(request.purchase_limit));
-    }
+    this.appendIfDefined(params, 'effects', request.effects, (val) => JSON.stringify(val));
+    this.appendIfDefined(params, 'purchase_limit', request.purchase_limit, (val) => JSON.stringify(val));
 
-    if (request.category_id !== undefined) params.append('category_id', String(request.category_id));
-    if (request.order !== undefined) params.append('order', String(request.order));
-    if (request.unlist !== undefined) params.append('unlist', request.unlist ? 'true' : 'false');
+    this.appendIfDefined(params, 'category_id', request.category_id);
+    this.appendIfDefined(params, 'order', request.order);
+    this.appendIfDefined(params, 'unlist', request.unlist, (val) => val ? 'true' : 'false');
 
-    return `${LIFEUP_URL_SCHEMES.ITEM}?${params.toString().replace(/\+/g, '%20')}`;
+    return this.buildFinalUrl(LIFEUP_URL_SCHEMES.ITEM, params);
   }
 
   /**
@@ -938,20 +956,16 @@ export class LifeUpClient {
     params.append('number', String(request.number));
 
     // Skills array (for exp type)
-    if (request.skills && request.skills.length > 0) {
-      request.skills.forEach(skillId => {
-        params.append('skills', String(skillId));
-      });
-    }
+    this.appendArray(params, 'skills', request.skills);
 
     // Item identifiers (for item type)
-    if (request.item_id !== undefined) params.append('item_id', String(request.item_id));
-    if (request.item_name !== undefined) params.append('item_name', request.item_name);
+    this.appendIfDefined(params, 'item_id', request.item_id);
+    this.appendIfDefined(params, 'item_name', request.item_name);
 
     // Optional flags
-    if (request.silent !== undefined) params.append('silent', request.silent ? 'true' : 'false');
+    this.appendIfDefined(params, 'silent', request.silent, (val) => val ? 'true' : 'false');
 
-    return `${LIFEUP_URL_SCHEMES.PENALTY}?${params.toString().replace(/\+/g, '%20')}`;
+    return this.buildFinalUrl(LIFEUP_URL_SCHEMES.PENALTY, params);
   }
 
   /**
@@ -961,25 +975,20 @@ export class LifeUpClient {
     const params = new URLSearchParams();
 
     // Identifier (for editing/deleting)
-    if (request.id !== undefined) params.append('id', String(request.id));
+    this.appendIfDefined(params, 'id', request.id);
 
     // Skill properties
-    if (request.content !== undefined) params.append('content', request.content);
-    if (request.desc !== undefined) params.append('desc', request.desc);
-    if (request.icon !== undefined) params.append('icon', request.icon);
+    this.appendIfDefined(params, 'content', request.content);
+    this.appendIfDefined(params, 'desc', request.desc);
+    this.appendIfDefined(params, 'icon', request.icon);
+    this.appendIfDefined(params, 'color', request.color, (val) => this.encodeColor(val));
+    this.appendIfDefined(params, 'type', request.type);
+    this.appendIfDefined(params, 'order', request.order);
+    this.appendIfDefined(params, 'status', request.status);
+    this.appendIfDefined(params, 'exp', request.exp);
+    this.appendIfDefined(params, 'delete', request.delete, (val) => val ? 'true' : 'false');
 
-    // Color encoding
-    if (request.color) {
-      params.append('color', request.color.replace('#', '%23'));
-    }
-
-    if (request.type !== undefined) params.append('type', String(request.type));
-    if (request.order !== undefined) params.append('order', String(request.order));
-    if (request.status !== undefined) params.append('status', String(request.status));
-    if (request.exp !== undefined) params.append('exp', String(request.exp));
-    if (request.delete !== undefined) params.append('delete', request.delete ? 'true' : 'false');
-
-    return `${LIFEUP_URL_SCHEMES.SKILL}?${params.toString().replace(/\+/g, '%20')}`;
+    return this.buildFinalUrl(LIFEUP_URL_SCHEMES.SKILL, params);
   }
 }
 
