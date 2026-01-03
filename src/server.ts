@@ -36,9 +36,12 @@ const EDIT_DELETE_TOOLS = [
 // All mutation tools (for backward compatibility)
 const MUTATION_TOOLS = [...CREATE_TOOLS, ...EDIT_DELETE_TOOLS] as const;
 
-type CreateTool = typeof CREATE_TOOLS[number];
 type EditDeleteTool = typeof EDIT_DELETE_TOOLS[number];
-type MutationTool = typeof MUTATION_TOOLS[number];
+
+// Type guard to safely check if a tool name is an edit/delete tool
+function isEditDeleteTool(toolName: string): toolName is EditDeleteTool {
+  return (EDIT_DELETE_TOOLS as readonly string[]).includes(toolName);
+}
 
 class LifeUpServer {
   private server: Server;
@@ -85,7 +88,7 @@ class LifeUpServer {
         configManager.logIfDebug(`Tool called: ${request.params.name}`, request.params.arguments);
 
         // Runtime enforcement: block edit/delete tools in SAFE_MODE
-        if (configManager.isSafeMode() && EDIT_DELETE_TOOLS.includes(request.params.name as EditDeleteTool)) {
+        if (configManager.isSafeMode() && isEditDeleteTool(request.params.name)) {
           return {
             content: [
               {
@@ -552,9 +555,9 @@ class LifeUpServer {
       {
         name: 'update_achievement',
         description:
-          'Update an existing achievement by ID. Can modify any property including name, conditions, rewards, and unlock status. ' +
-          'Use absolute or relative set types for numeric rewards. ' +
-          'NOTE: Updating conditions_json may not work reliably - verify changes in app or use delete + recreate as a workaround.',
+          'Update an existing achievement by ID. Modify name, description, rewards, and unlock status. ' +
+          '⚠️  IMPORTANT: Updating conditions_json is NOT supported by the LifeUp API. If you need to change conditions, delete this achievement and create a new one with desired conditions. ' +
+          'Set numeric rewards using absolute (replace) or relative (add to current) set types. Always verify changes in the LifeUp app after updating.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -973,7 +976,7 @@ class LifeUpServer {
 
     // Filter out edit/delete tools if in safe mode (create tools still allowed)
     if (configManager.isSafeMode()) {
-      return allTools.filter(tool => !EDIT_DELETE_TOOLS.includes(tool.name as EditDeleteTool));
+      return allTools.filter(tool => !isEditDeleteTool(tool.name));
     }
 
     return allTools;

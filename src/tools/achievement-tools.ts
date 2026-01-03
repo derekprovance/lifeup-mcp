@@ -9,42 +9,9 @@ import {
   CreateAchievementSchema,
   UpdateAchievementSchema,
   DeleteAchievementSchema,
-  type AchievementMatchInput,
-  type CreateAchievementInput,
-  type UpdateAchievementInput,
-  type DeleteAchievementInput,
 } from '../config/validation.js';
 import * as Types from '../client/types.js';
 import { ensureServerHealthy, handleToolError } from './tool-helpers.js';
-
-/**
- * Get human-readable description for achievement condition type
- */
-function getConditionTypeDescription(type: number): string {
-  const types: Record<number, string> = {
-    0: 'Complete specific task',
-    1: 'Task completion streak',
-    3: 'Total pomodoros',
-    4: 'Days using LifeUp',
-    5: 'Like count',
-    6: 'Daily streak',
-    7: 'Reach coin amount',
-    8: 'Coins earned in one day',
-    9: 'Task pomodoro count',
-    10: 'Item purchase count',
-    11: 'Item usage count',
-    12: 'Loot box item count',
-    13: 'Skill level',
-    14: 'Character level',
-    15: 'Total items obtained',
-    16: 'Items from synthesis',
-    17: 'Current item quantity',
-    18: 'Task focus duration',
-    19: 'ATM savings',
-    20: 'External API trigger',
-  };
-  return types[type] || `Condition type ${type}`;
-}
 
 export class AchievementTools {
   /**
@@ -361,6 +328,7 @@ export class AchievementTools {
 
   /**
    * Update an existing achievement
+   * If conditions_json is provided, automatically deletes and recreates the achievement
    */
   static async updateAchievement(input: unknown): Promise<string> {
     try {
@@ -369,6 +337,12 @@ export class AchievementTools {
 
       await ensureServerHealthy();
 
+      // If conditions_json is provided, use delete + recreate approach
+      if (validated.conditions_json && validated.conditions_json.length > 0) {
+        return await this.recreateAchievementWithConditions(validated);
+      }
+
+      // Normal update for non-condition changes
       const response = await lifeupClient.updateAchievement(validated);
 
       configManager.logIfDebug('Achievement update response:', response);
@@ -379,7 +353,6 @@ export class AchievementTools {
       const updates: string[] = [];
       if (validated.name) updates.push(`name to "${validated.name}"`);
       if (validated.desc !== undefined) updates.push('description');
-      if (validated.conditions_json) updates.push('unlock conditions');
       if (validated.exp !== undefined) updates.push('experience reward');
       if (validated.coin !== undefined) updates.push('coin reward');
       if (validated.skills) updates.push('skill rewards');
@@ -392,25 +365,70 @@ export class AchievementTools {
         result += `**Updated**: ${updates.join(', ')}\n`;
       }
 
-      // Add warning when conditions_json is provided
-      if (validated.conditions_json && validated.conditions_json.length > 0) {
-        result += `\n⚠️  **Important Notice About Conditions**:\n`;
-        result += `The LifeUp API may not support updating conditions on existing achievements.\n`;
-        result += `Please verify in your LifeUp app that the conditions were applied.\n\n`;
+      return result;
+    } catch (error) {
+      return handleToolError(error, 'updating achievement');
+    }
+  }
 
-        result += `**Conditions you requested**:\n`;
-        validated.conditions_json.forEach((cond, idx) => {
-          const condType = getConditionTypeDescription(cond.type);
-          result += `  ${idx + 1}. ${condType}`;
-          if (cond.related_id) result += ` (ID: ${cond.related_id})`;
-          result += ` - Target: ${cond.target}\n`;
-        });
+  /**
+   * Recreate an achievement with new conditions
+   * This is necessary because the API doesn't support updating conditions on existing achievements
+   */
+  private static async recreateAchievementWithConditions(
+    updateRequest: Types.UpdateAchievementRequest
+  ): Promise<string> {
+    try {
+      // Step 1: Fetch all achievements to find the current one
+      const achievements = await lifeupClient.getAchievements();
+      const currentAchievement = achievements?.find((a) => a.id === updateRequest.edit_id);
 
-        result += `\n**If conditions didn't update, try this workaround**:\n`;
-        result += `1. Use \`delete_achievement\` to remove achievement #${validated.edit_id}\n`;
-        result += `2. Use \`create_achievement\` with the same properties + conditions_json\n`;
-        result += `3. Or set conditions during initial creation, not after\n`;
+      if (!currentAchievement) {
+        return handleToolError(
+          new Error(`Achievement #${updateRequest.edit_id} not found. Cannot update conditions.`),
+          'updating achievement'
+        );
       }
+
+      // Step 2: Build create request with merged properties
+      const createRequest: Types.CreateAchievementRequest = {
+        // Original properties (may be overridden)
+        name: updateRequest.name || currentAchievement.name,
+        category_id: updateRequest.category_id || currentAchievement.category_id,
+        desc: updateRequest.desc !== undefined ? updateRequest.desc : currentAchievement.description,
+
+        // Original rewards (if not overridden in update request)
+        exp: updateRequest.exp !== undefined ? updateRequest.exp : currentAchievement.exp,
+        coin: updateRequest.coin !== undefined ? updateRequest.coin : currentAchievement.coin,
+        coin_var: updateRequest.coin_var !== undefined ? updateRequest.coin_var : currentAchievement.coin_var,
+        skills: updateRequest.skills ?? currentAchievement.skills,
+        items: updateRequest.items ?? currentAchievement.items,
+
+        // NEW conditions (the whole point!)
+        conditions_json: updateRequest.conditions_json,
+
+        // Other properties
+        color: updateRequest.color ?? currentAchievement.color,
+        secret: updateRequest.secret !== undefined ? updateRequest.secret : currentAchievement.secret,
+        unlocked: false, // Always create as locked (user must unlock again)
+      };
+
+      // Step 3: Delete old achievement
+      configManager.logIfDebug(`Deleting old achievement #${updateRequest.edit_id} to recreate with conditions`);
+      await lifeupClient.deleteAchievement({ edit_id: updateRequest.edit_id });
+
+      // Step 4: Create new achievement with conditions
+      const response = await lifeupClient.createAchievement(createRequest);
+      const newId = response.data?.id || 'unknown';
+      configManager.logIfDebug(`Created new achievement with ID: ${newId}`);
+
+      // Step 5: Build success message
+      let result = `✓ Achievement recreated with new conditions!\n\n`;
+      result += `**Previous ID**: ${updateRequest.edit_id} (deleted)\n`;
+      result += `**New ID**: ${newId}\n`;
+      result += `**Name**: ${createRequest.name}\n`;
+      result += `**Conditions**: ${createRequest.conditions_json?.length || 0} condition(s) set\n\n`;
+      result += `**Note**: Achievement was recreated to apply conditions. Unlock history was reset.\n`;
 
       return result;
     } catch (error) {

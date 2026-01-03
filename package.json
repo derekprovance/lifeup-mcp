@@ -17,7 +17,10 @@
         "test:watch": "vitest --watch",
         "test:ui": "vitest --ui",
         "test:coverage": "vitest --coverage",
-        "test:run": "vitest run"
+        "test:run": "vitest run",
+        "lint": "eslint src tests --ext .ts,.tsx",
+        "lint:fix": "eslint src tests --ext .ts,.tsx --fix",
+        "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\""
     },
     "keywords": [
         "mcp",
@@ -35,8 +38,12 @@
     },
     "devDependencies": {
         "@types/node": "^20.10.0",
+        "@typescript-eslint/eslint-plugin": "^6.13.2",
+        "@typescript-eslint/parser": "^6.13.2",
         "@vitest/coverage-v8": "^4.0.16",
         "@vitest/ui": "^4.0.16",
+        "eslint": "^8.55.0",
+        "prettier": "^3.1.1",
         "tsx": "^4.7.0",
         "typescript": "^5.3.3",
         "vitest": "^4.0.16"

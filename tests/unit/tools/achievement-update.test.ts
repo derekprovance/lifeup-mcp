@@ -1,6 +1,6 @@
 /**
- * Tests for achievement update warnings
- * Verifies that appropriate warnings are shown when updating achievement conditions
+ * Tests for achievement update with delete + recreate for conditions
+ * Verifies that updating conditions triggers recreation with new conditions
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -29,25 +29,30 @@ vi.mock('@/config/config', () => {
   return { configManager: mockConfig };
 });
 
-// Mock tool helpers to avoid API call
+// Mock tool helpers
 vi.mock('@/tools/tool-helpers', () => {
   return {
     ensureServerHealthy: vi.fn().mockResolvedValue(undefined),
     handleToolError: vi.fn((error) => {
       if (error instanceof Error) {
-        return `Error: ${error.message}`;
+        return `❌ ${error.message}`;
       }
-      return 'Error occurred';
+      return '❌ Error occurred';
     }),
   };
 });
 
-describe('AchievementTools.updateAchievement with conditions', () => {
+describe('AchievementTools.updateAchievement - Delete + Recreate for Conditions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Mock a successful response
+    // Mock a successful delete + create response
     const mockClient = lifeupClientModule.lifeupClient as any;
+    mockClient.deleteAchievement.mockResolvedValue({
+      code: 200,
+      message: 'success',
+      data: 'success',
+    });
     mockClient.updateAchievement.mockResolvedValue({
       code: 200,
       message: 'success',
@@ -55,8 +60,25 @@ describe('AchievementTools.updateAchievement with conditions', () => {
     });
   });
 
-  describe('warning inclusion', () => {
-    it('should include warning when updating conditions_json', async () => {
+  describe('recreate behavior when conditions provided', () => {
+    it('should recreate achievement when conditions_json is provided', async () => {
+      const mockClient = lifeupClientModule.lifeupClient as any;
+      mockClient.getAchievements.mockResolvedValue([
+        {
+          id: 109,
+          name: 'Test Achievement',
+          category_id: 1,
+          description: 'Test desc',
+          exp: 50,
+          coin: 100,
+        },
+      ]);
+      mockClient.createAchievement.mockResolvedValue({
+        code: 200,
+        message: 'success',
+        data: { id: 110 },
+      });
+
       const input = {
         edit_id: 109,
         conditions_json: [{ type: 0, target: 1, related_id: 208 }],
@@ -64,13 +86,16 @@ describe('AchievementTools.updateAchievement with conditions', () => {
 
       const result = await AchievementTools.updateAchievement(input);
 
-      expect(result).toContain('Important Notice About Conditions');
-      expect(result).toContain('may not support updating conditions');
-      expect(result).toContain('verify in your LifeUp app');
-      expect(result).toContain('workaround');
+      expect(result).toContain('Achievement recreated with new conditions');
+      expect(result).toContain('109 (deleted)');
+      expect(result).toContain('110');
+      expect(mockClient.deleteAchievement).toHaveBeenCalledWith({ edit_id: 109 });
+      expect(mockClient.createAchievement).toHaveBeenCalled();
     });
 
-    it('should NOT include warning when updating other properties only', async () => {
+    it('should use normal update when no conditions provided', async () => {
+      const mockClient = lifeupClientModule.lifeupClient as any;
+
       const input = {
         edit_id: 109,
         name: 'Updated Name',
@@ -78,10 +103,16 @@ describe('AchievementTools.updateAchievement with conditions', () => {
 
       const result = await AchievementTools.updateAchievement(input);
 
-      expect(result).not.toContain('Important Notice About Conditions');
+      expect(result).toContain('✓ Achievement updated successfully');
+      expect(result).not.toContain('recreated');
+      expect(mockClient.deleteAchievement).not.toHaveBeenCalled();
+      expect(mockClient.createAchievement).not.toHaveBeenCalled();
+      expect(mockClient.updateAchievement).toHaveBeenCalledWith(input);
     });
 
-    it('should NOT include warning when updating with empty conditions_json', async () => {
+    it('should use normal update when conditions_json is empty array', async () => {
+      const mockClient = lifeupClientModule.lifeupClient as any;
+
       const input = {
         edit_id: 109,
         name: 'Updated Name',
@@ -90,124 +121,170 @@ describe('AchievementTools.updateAchievement with conditions', () => {
 
       const result = await AchievementTools.updateAchievement(input);
 
-      expect(result).not.toContain('Important Notice About Conditions');
-    });
-
-    it('should include condition details in warning', async () => {
-      const input = {
-        edit_id: 109,
-        conditions_json: [
-          { type: 0, target: 1, related_id: 208 },
-          { type: 7, target: 1000, related_id: undefined },
-        ],
-      };
-
-      const result = await AchievementTools.updateAchievement(input);
-
-      expect(result).toContain('Complete specific task');
-      expect(result).toContain('Reach coin amount');
-      expect(result).toContain('ID: 208');
-      expect(result).toContain('Target: 1000');
-    });
-
-    it('should include workaround suggestions in warning', async () => {
-      const input = {
-        edit_id: 109,
-        conditions_json: [{ type: 0, target: 1, related_id: 208 }],
-      };
-
-      const result = await AchievementTools.updateAchievement(input);
-
-      expect(result).toContain('delete_achievement');
-      expect(result).toContain('create_achievement');
-      expect(result).toContain('achievement #109');
-    });
-  });
-
-  describe('condition type descriptions', () => {
-    it('should describe condition type 0 correctly', async () => {
-      const input = {
-        edit_id: 1,
-        conditions_json: [{ type: 0, target: 1, related_id: 208 }],
-      };
-
-      const result = await AchievementTools.updateAchievement(input);
-
-      expect(result).toContain('Complete specific task');
-    });
-
-    it('should describe condition type 7 correctly', async () => {
-      const input = {
-        edit_id: 1,
-        conditions_json: [{ type: 7, target: 1000000 }],
-      };
-
-      const result = await AchievementTools.updateAchievement(input);
-
-      expect(result).toContain('Reach coin amount');
-    });
-
-    it('should describe condition type 13 correctly', async () => {
-      const input = {
-        edit_id: 1,
-        conditions_json: [{ type: 13, target: 5, related_id: 1 }],
-      };
-
-      const result = await AchievementTools.updateAchievement(input);
-
-      expect(result).toContain('Skill level');
-    });
-
-    it('should reject invalid condition types in validation', async () => {
-      // The validation schema rejects types > 20, so this is an expected rejection
-      const input = {
-        edit_id: 1,
-        conditions_json: [{ type: 999, target: 100 }],
-      };
-
-      const result = await AchievementTools.updateAchievement(input);
-
-      // Validation should fail, not get to the API call
-      expect(result).toContain('Error');
-    });
-  });
-
-  describe('success response structure', () => {
-    it('should still show success message with conditions warning', async () => {
-      const input = {
-        edit_id: 109,
-        conditions_json: [{ type: 0, target: 1, related_id: 208 }],
-      };
-
-      const result = await AchievementTools.updateAchievement(input);
-
       expect(result).toContain('✓ Achievement updated successfully');
-      expect(result).toContain('109'); // Achievement ID appears somewhere
-      expect(result).toContain('unlock conditions');
-      expect(result).toContain('Important Notice About Conditions');
+      expect(result).not.toContain('recreated');
+      expect(mockClient.deleteAchievement).not.toHaveBeenCalled();
+      expect(mockClient.createAchievement).not.toHaveBeenCalled();
     });
+  });
 
-    it('should include all updated properties in success message', async () => {
+  describe('property merging during recreation', () => {
+    it('should merge update properties with original properties', async () => {
+      const mockClient = lifeupClientModule.lifeupClient as any;
+      mockClient.getAchievements.mockResolvedValue([
+        {
+          id: 109,
+          name: 'Original Name',
+          category_id: 1,
+          description: 'Original desc',
+          exp: 50,
+          coin: 100,
+          color: '#FF0000',
+          secret: true,
+        },
+      ]);
+      mockClient.createAchievement.mockResolvedValue({ code: 200, data: { id: 110 } });
+
       const input = {
         edit_id: 109,
-        name: 'New Name',
-        desc: 'New Description',
+        name: 'New Name', // Override name
         conditions_json: [{ type: 0, target: 1, related_id: 208 }],
-        exp: 100,
+        // exp and coin should be kept from original
+      };
+
+      await AchievementTools.updateAchievement(input);
+
+      const createCall = mockClient.createAchievement.mock.calls[0][0];
+      expect(createCall.name).toBe('New Name'); // Overridden
+      expect(createCall.exp).toBe(50); // From original
+      expect(createCall.coin).toBe(100); // From original
+      expect(createCall.color).toBe('#FF0000'); // From original
+      expect(createCall.secret).toBe(true); // From original
+      expect(createCall.conditions_json).toEqual([{ type: 0, target: 1, related_id: 208 }]);
+    });
+
+    it('should override rewards when provided in update request', async () => {
+      const mockClient = lifeupClientModule.lifeupClient as any;
+      mockClient.getAchievements.mockResolvedValue([
+        {
+          id: 109,
+          name: 'Test Achievement',
+          category_id: 1,
+          description: 'Test desc',
+          exp: 50,
+          coin: 100,
+        },
+      ]);
+      mockClient.createAchievement.mockResolvedValue({ code: 200, data: { id: 110 } });
+
+      const input = {
+        edit_id: 109,
+        exp: 200, // Override exp
+        coin: 300, // Override coin
+        conditions_json: [{ type: 0, target: 1, related_id: 208 }],
+      };
+
+      await AchievementTools.updateAchievement(input);
+
+      const createCall = mockClient.createAchievement.mock.calls[0][0];
+      expect(createCall.exp).toBe(200); // Overridden
+      expect(createCall.coin).toBe(300); // Overridden
+    });
+
+    it('should preserve category when not overridden', async () => {
+      const mockClient = lifeupClientModule.lifeupClient as any;
+      mockClient.getAchievements.mockResolvedValue([
+        {
+          id: 109,
+          name: 'Test Achievement',
+          category_id: 5,
+          description: 'Test desc',
+        },
+      ]);
+      mockClient.createAchievement.mockResolvedValue({ code: 200, data: { id: 110 } });
+
+      const input = {
+        edit_id: 109,
+        conditions_json: [{ type: 0, target: 1, related_id: 208 }],
+      };
+
+      await AchievementTools.updateAchievement(input);
+
+      const createCall = mockClient.createAchievement.mock.calls[0][0];
+      expect(createCall.category_id).toBe(5); // From original
+    });
+
+    it('should create as locked even if original was unlocked', async () => {
+      const mockClient = lifeupClientModule.lifeupClient as any;
+      mockClient.getAchievements.mockResolvedValue([
+        {
+          id: 109,
+          name: 'Test Achievement',
+          category_id: 1,
+          description: 'Test desc',
+          unlocked: true, // Originally unlocked
+        },
+      ]);
+      mockClient.createAchievement.mockResolvedValue({ code: 200, data: { id: 110 } });
+
+      const input = {
+        edit_id: 109,
+        conditions_json: [{ type: 0, target: 1, related_id: 208 }],
+      };
+
+      await AchievementTools.updateAchievement(input);
+
+      const createCall = mockClient.createAchievement.mock.calls[0][0];
+      expect(createCall.unlocked).toBe(false); // Always created as locked
+    });
+  });
+
+  describe('success response format', () => {
+    it('should show recreated message with IDs', async () => {
+      const mockClient = lifeupClientModule.lifeupClient as any;
+      mockClient.getAchievements.mockResolvedValue([
+        { id: 109, name: 'Test', category_id: 1, description: 'Test' },
+      ]);
+      mockClient.createAchievement.mockResolvedValue({ code: 200, data: { id: 110 } });
+
+      const input = {
+        edit_id: 109,
+        conditions_json: [{ type: 0, target: 1, related_id: 208 }],
       };
 
       const result = await AchievementTools.updateAchievement(input);
 
-      expect(result).toContain('✓ Achievement updated successfully');
-      expect(result).toContain('name to "New Name"');
-      expect(result).toContain('description');
-      expect(result).toContain('unlock conditions');
-      expect(result).toContain('experience reward');
+      expect(result).toContain('✓ Achievement recreated with new conditions');
+      expect(result).toContain('109 (deleted)');
+      expect(result).toContain('110');
+      expect(result).toContain('1 condition(s)');
+      expect(result).toContain('Unlock history was reset');
     });
-  });
 
-  describe('multiple conditions', () => {
-    it('should list all conditions in warning', async () => {
+    it('should include name in response', async () => {
+      const mockClient = lifeupClientModule.lifeupClient as any;
+      mockClient.getAchievements.mockResolvedValue([
+        { id: 109, name: 'My Achievement', category_id: 1, description: 'Test' },
+      ]);
+      mockClient.createAchievement.mockResolvedValue({ code: 200, data: { id: 110 } });
+
+      const input = {
+        edit_id: 109,
+        conditions_json: [{ type: 0, target: 1, related_id: 208 }],
+      };
+
+      const result = await AchievementTools.updateAchievement(input);
+
+      expect(result).toContain('My Achievement');
+    });
+
+    it('should show multiple conditions count', async () => {
+      const mockClient = lifeupClientModule.lifeupClient as any;
+      mockClient.getAchievements.mockResolvedValue([
+        { id: 109, name: 'Test', category_id: 1, description: 'Test' },
+      ]);
+      mockClient.createAchievement.mockResolvedValue({ code: 200, data: { id: 110 } });
+
       const input = {
         edit_id: 109,
         conditions_json: [
@@ -219,26 +296,78 @@ describe('AchievementTools.updateAchievement with conditions', () => {
 
       const result = await AchievementTools.updateAchievement(input);
 
-      expect(result).toContain('1. Complete specific task');
-      expect(result).toContain('2. Reach coin amount');
-      expect(result).toContain('3. Skill level');
+      expect(result).toContain('3 condition(s)');
     });
+  });
 
-    it('should show condition count in warning', async () => {
+  describe('error handling', () => {
+    it('should handle achievement not found error', async () => {
+      const mockClient = lifeupClientModule.lifeupClient as any;
+      mockClient.getAchievements.mockResolvedValue([
+        { id: 999, name: 'Different Achievement', category_id: 1, description: 'Test' },
+      ]);
+
       const input = {
-        edit_id: 109,
-        conditions_json: [
-          { type: 0, target: 1, related_id: 208 },
-          { type: 7, target: 1000000 },
-        ],
+        edit_id: 109, // Not in the list
+        conditions_json: [{ type: 0, target: 1, related_id: 208 }],
       };
 
       const result = await AchievementTools.updateAchievement(input);
 
-      expect(result).toContain('Conditions you requested');
-      // Verify 2 conditions are listed by checking for the condition descriptions
-      expect(result).toContain('1. Complete specific task');
-      expect(result).toContain('2. Reach coin amount');
+      expect(result).toContain('❌');
+      expect(result).toContain('Achievement #109 not found');
+      expect(mockClient.deleteAchievement).not.toHaveBeenCalled();
+      expect(mockClient.createAchievement).not.toHaveBeenCalled();
+    });
+
+    it('should handle getAchievements returning null', async () => {
+      const mockClient = lifeupClientModule.lifeupClient as any;
+      mockClient.getAchievements.mockResolvedValue(null);
+
+      const input = {
+        edit_id: 109,
+        conditions_json: [{ type: 0, target: 1, related_id: 208 }],
+      };
+
+      const result = await AchievementTools.updateAchievement(input);
+
+      expect(result).toContain('❌');
+      expect(result).toContain('Achievement #109 not found');
+    });
+  });
+
+  describe('normal updates without conditions', () => {
+    it('should not recreate when only updating name', async () => {
+      const mockClient = lifeupClientModule.lifeupClient as any;
+      mockClient.updateAchievement.mockResolvedValue({ code: 200 });
+
+      const input = {
+        edit_id: 109,
+        name: 'New Name',
+      };
+
+      const result = await AchievementTools.updateAchievement(input);
+
+      expect(mockClient.getAchievements).not.toHaveBeenCalled();
+      expect(mockClient.deleteAchievement).not.toHaveBeenCalled();
+      expect(mockClient.createAchievement).not.toHaveBeenCalled();
+      expect(mockClient.updateAchievement).toHaveBeenCalledWith(input);
+    });
+
+    it('should handle normal update response format', async () => {
+      const mockClient = lifeupClientModule.lifeupClient as any;
+      mockClient.updateAchievement.mockResolvedValue({ code: 200 });
+
+      const input = {
+        edit_id: 109,
+        exp: 200,
+      };
+
+      const result = await AchievementTools.updateAchievement(input);
+
+      expect(result).toContain('✓ Achievement updated successfully');
+      expect(result).toContain('109');
+      expect(result).toContain('experience reward');
     });
   });
 });

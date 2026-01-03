@@ -6,7 +6,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { configManager, ConfigManager } from '../config/config.js';
 import { ErrorHandler, LifeUpError } from '../error/error-handler.js';
-import { API_ENDPOINTS, RESPONSE_CODE, LIFEUP_URL_SCHEMES, LIFEUP_VERSION } from './constants.js';
+import { API_ENDPOINTS, RESPONSE_CODE, LIFEUP_URL_SCHEMES } from './constants.js';
 import * as Types from './types.js';
 
 export class LifeUpClient {
@@ -501,32 +501,9 @@ export class LifeUpClient {
     try {
       const url = this.buildAchievementUrl(request);
       this.configManager.logIfDebug('Updating achievement with URL:', url);
-
-      // Enhanced debug logging for condition updates
-      if (request.conditions_json && request.conditions_json.length > 0) {
-        this.configManager.logIfDebug('Achievement condition update requested:', {
-          achievementId: request.edit_id,
-          conditionCount: request.conditions_json.length,
-          conditions: request.conditions_json,
-          decodedUrl: decodeURIComponent(url),
-        });
-        this.configManager.logIfDebug(
-          'WARNING: Updating conditions on existing achievement may not be supported by LifeUp API'
-        );
-      }
-
       const response = await this.executeUrlScheme(url);
 
       this.configManager.logIfDebug('Update achievement response:', response);
-
-      // Warning if generic success response with conditions
-      if (response.code === RESPONSE_CODE.SUCCESS && request.conditions_json && request.conditions_json.length > 0) {
-        if (response.data === 'success') {
-          this.configManager.logIfDebug(
-            'API returned generic success for condition update - verify changes in app'
-          );
-        }
-      }
 
       if (response.code === RESPONSE_CODE.SUCCESS) {
         return response;
@@ -655,20 +632,6 @@ export class LifeUpClient {
     }
 
     const url = `${LIFEUP_URL_SCHEMES.ACHIEVEMENT}?${params.toString().replace(/\+/g, '%20')}`;
-
-    // Enhanced debug logging for achievement URL building
-    if (this.configManager.getConfig().debug) {
-      const isEditWithConditions = 'edit_id' in request && request.edit_id && request.conditions_json && request.conditions_json.length > 0;
-      if (isEditWithConditions) {
-        this.configManager.logIfDebug('Built achievement URL for condition update:', {
-          hasEditId: true,
-          hasConditions: true,
-          conditionCount: request.conditions_json?.length || 0,
-          decodedUrl: decodeURIComponent(url),
-        });
-      }
-    }
-
     return url;
   }
 
@@ -865,13 +828,6 @@ export class LifeUpClient {
   }
 
   /**
-   * Helper to encode hex color for URL (URLSearchParams handles encoding)
-   */
-  private encodeColor(color: string): string {
-    return color;
-  }
-
-  /**
    * Helper to append a field to URLSearchParams if defined
    */
   private appendIfDefined(
@@ -935,12 +891,7 @@ export class LifeUpClient {
     this.appendIfDefined(params, 'start_time', request.start_time);
 
     // Color encoding
-    this.appendIfDefined(
-      params,
-      'color',
-      request.color,
-      (val) => this.encodeColor(val)
-    );
+    this.appendIfDefined(params, 'color', request.color);
 
     // Background settings
     this.appendIfDefined(params, 'background_url', request.background_url);
@@ -973,7 +924,7 @@ export class LifeUpClient {
     // Optional properties
     this.appendIfDefined(params, 'desc', request.desc);
     this.appendIfDefined(params, 'icon', request.icon);
-    this.appendIfDefined(params, 'title_color_string', request.title_color_string, (val) => this.encodeColor(val));
+    this.appendIfDefined(params, 'title_color_string', request.title_color_string);
     this.appendIfDefined(params, 'price', request.price);
     this.appendIfDefined(params, 'stock_number', request.stock_number);
     this.appendIfDefined(params, 'action_text', request.action_text);
@@ -1021,7 +972,7 @@ export class LifeUpClient {
 
     // Other properties
     this.appendIfDefined(params, 'action_text', request.action_text);
-    this.appendIfDefined(params, 'title_color_string', request.title_color_string, (val) => this.encodeColor(val));
+    this.appendIfDefined(params, 'title_color_string', request.title_color_string);
 
     // JSON parameters
     this.appendIfDefined(params, 'effects', request.effects, (val) => JSON.stringify(val));
@@ -1071,7 +1022,7 @@ export class LifeUpClient {
     this.appendIfDefined(params, 'content', request.content);
     this.appendIfDefined(params, 'desc', request.desc);
     this.appendIfDefined(params, 'icon', request.icon);
-    this.appendIfDefined(params, 'color', request.color, (val) => this.encodeColor(val));
+    this.appendIfDefined(params, 'color', request.color);
     this.appendIfDefined(params, 'type', request.type);
     this.appendIfDefined(params, 'order', request.order);
     this.appendIfDefined(params, 'status', request.status);

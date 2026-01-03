@@ -3,7 +3,7 @@
  */
 
 import { configManager } from '../config/config.js';
-import axios, { AxiosError } from 'axios';
+import { AxiosError } from 'axios';
 
 export class LifeUpError extends Error {
   constructor(

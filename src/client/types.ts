@@ -73,6 +73,14 @@ export interface Achievement {
   progress: number;
   target: number;
   is_unlocked: boolean;
+  // Optional reward fields
+  exp?: number;
+  coin?: number;
+  coin_var?: number;
+  skills?: number[];
+  items?: ItemReward[];
+  color?: string;
+  secret?: boolean;
 }
 
 export interface Skill {
