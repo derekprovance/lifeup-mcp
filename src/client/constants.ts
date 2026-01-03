@@ -58,7 +58,7 @@ export const RESPONSE_CODE = {
 
 // Default configuration
 export const DEFAULT_CONFIG = {
-  HOST: '10.103.2.235',
+  HOST: 'localhost',
   PORT: 13276,
   TIMEOUT: 10000,
   RETRIES: 2,

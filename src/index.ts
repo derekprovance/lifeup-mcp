@@ -7,7 +7,7 @@
  * It provides tools for task creation, querying, and achievement matching.
  *
  * Configuration:
- *   LIFEUP_HOST: IP address of LifeUp server (default: 10.103.2.235)
+ *   LIFEUP_HOST: IP address of LifeUp server
  *   LIFEUP_PORT: Port of LifeUp server (default: 13276)
  *   LIFEUP_API_TOKEN: Optional API token from LifeUp settings
  *   DEBUG: Set to 'true' for debug logging

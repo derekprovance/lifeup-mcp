@@ -4,7 +4,6 @@
 
 import { lifeupClient } from '../client/lifeup-client.js';
 import { configManager } from '../config/config.js';
-import { ErrorHandler, LifeUpError } from '../error/error-handler.js';
 import {
   AchievementMatchSchema,
   CreateAchievementSchema,
@@ -16,7 +15,7 @@ import {
   type DeleteAchievementInput,
 } from '../config/validation.js';
 import * as Types from '../client/types.js';
-import { ZodError } from 'zod';
+import { ensureServerHealthy, handleToolError } from './tool-helpers.js';
 
 export class AchievementTools {
   /**
@@ -24,15 +23,7 @@ export class AchievementTools {
    */
   static async listAchievements(): Promise<string> {
     try {
-      const isHealthy = await lifeupClient.healthCheck();
-      if (!isHealthy) {
-        throw new LifeUpError(
-          'LifeUp server is unreachable',
-          'SERVER_UNREACHABLE',
-          'The LifeUp server is not responding.',
-          true
-        );
-      }
+      await ensureServerHealthy();
 
       // Try to get full achievements first
       const achievements = await lifeupClient.getAchievements();
@@ -60,10 +51,7 @@ export class AchievementTools {
 
       return result;
     } catch (error) {
-      if (error instanceof LifeUpError) {
-        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
-      }
-      return `❌ Error fetching achievements: ${(error as Error).message}`;
+      return handleToolError(error, 'fetching achievements');
     }
   }
 
@@ -76,15 +64,7 @@ export class AchievementTools {
       const validated = AchievementMatchSchema.parse(input);
       configManager.logIfDebug('Matching task to achievements:', validated);
 
-      const isHealthy = await lifeupClient.healthCheck();
-      if (!isHealthy) {
-        throw new LifeUpError(
-          'LifeUp server is unreachable',
-          'SERVER_UNREACHABLE',
-          'The LifeUp server is not responding.',
-          true
-        );
-      }
+      await ensureServerHealthy();
 
       // Try to get achievements
       let achievements = await lifeupClient.getAchievements();
@@ -92,7 +72,7 @@ export class AchievementTools {
       // If not available, get categories and use those instead
       if (!achievements) {
         const categories = await lifeupClient.getAchievementCategories();
-        achievements = categories as any;
+        achievements = categories as unknown as typeof achievements;
       }
 
       if (!achievements || achievements.length === 0) {
@@ -128,16 +108,7 @@ export class AchievementTools {
 
       return result;
     } catch (error) {
-      if (error instanceof LifeUpError) {
-        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
-      }
-
-      if (error instanceof ZodError) {
-        const messages = error.issues.map((e) => `- ${e.path.join('.')}: ${e.message}`).join('\n');
-        return `❌ Invalid input:\n${messages}`;
-      }
-
-      return `❌ Error matching achievements: ${(error as Error).message}`;
+      return handleToolError(error, 'matching achievements');
     }
   }
 
@@ -328,15 +299,7 @@ export class AchievementTools {
       const validated = CreateAchievementSchema.parse(input);
       configManager.logIfDebug('Creating achievement:', validated);
 
-      const isHealthy = await lifeupClient.healthCheck();
-      if (!isHealthy) {
-        throw new LifeUpError(
-          'LifeUp server is unreachable',
-          'SERVER_UNREACHABLE',
-          'The LifeUp server is not responding.',
-          true
-        );
-      }
+      await ensureServerHealthy();
 
       const response = await lifeupClient.createAchievement(validated);
 
@@ -363,16 +326,7 @@ export class AchievementTools {
 
       return result;
     } catch (error) {
-      if (error instanceof LifeUpError) {
-        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
-      }
-
-      if (error instanceof ZodError) {
-        const messages = error.issues.map((e) => `- ${e.path.join('.')}: ${e.message}`).join('\n');
-        return `❌ Invalid input:\n${messages}`;
-      }
-
-      return `❌ Unexpected error creating achievement: ${(error as Error).message}`;
+      return handleToolError(error, 'creating achievement');
     }
   }
 
@@ -384,15 +338,7 @@ export class AchievementTools {
       const validated = UpdateAchievementSchema.parse(input);
       configManager.logIfDebug('Updating achievement:', validated);
 
-      const isHealthy = await lifeupClient.healthCheck();
-      if (!isHealthy) {
-        throw new LifeUpError(
-          'LifeUp server is unreachable',
-          'SERVER_UNREACHABLE',
-          'The LifeUp server is not responding.',
-          true
-        );
-      }
+      await ensureServerHealthy();
 
       const response = await lifeupClient.updateAchievement(validated);
 
@@ -414,16 +360,7 @@ export class AchievementTools {
 
       return result;
     } catch (error) {
-      if (error instanceof LifeUpError) {
-        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
-      }
-
-      if (error instanceof ZodError) {
-        const messages = error.issues.map((e) => `- ${e.path.join('.')}: ${e.message}`).join('\n');
-        return `❌ Invalid input:\n${messages}`;
-      }
-
-      return `❌ Unexpected error updating achievement: ${(error as Error).message}`;
+      return handleToolError(error, 'updating achievement');
     }
   }
 
@@ -435,15 +372,7 @@ export class AchievementTools {
       const validated = DeleteAchievementSchema.parse(input);
       configManager.logIfDebug('Deleting achievement:', validated);
 
-      const isHealthy = await lifeupClient.healthCheck();
-      if (!isHealthy) {
-        throw new LifeUpError(
-          'LifeUp server is unreachable',
-          'SERVER_UNREACHABLE',
-          'The LifeUp server is not responding.',
-          true
-        );
-      }
+      await ensureServerHealthy();
 
       await lifeupClient.deleteAchievement(validated);
 
@@ -453,16 +382,7 @@ export class AchievementTools {
         `⚠️  This action is permanent and cannot be undone.`
       );
     } catch (error) {
-      if (error instanceof LifeUpError) {
-        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
-      }
-
-      if (error instanceof ZodError) {
-        const messages = error.issues.map((e) => `- ${e.path.join('.')}: ${e.message}`).join('\n');
-        return `❌ Invalid input:\n${messages}`;
-      }
-
-      return `❌ Unexpected error deleting achievement: ${(error as Error).message}`;
+      return handleToolError(error, 'deleting achievement');
     }
   }
 }

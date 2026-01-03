@@ -4,7 +4,6 @@
 
 import { lifeupClient } from '../client/lifeup-client.js';
 import { configManager } from '../config/config.js';
-import { ErrorHandler, LifeUpError } from '../error/error-handler.js';
 import {
   CreateTaskSchema,
   SearchTasksSchema,
@@ -15,7 +14,7 @@ import {
 } from '../config/validation.js';
 import * as Types from '../client/types.js';
 import { TASK_STATUS } from '../client/constants.js';
-import { ZodError } from 'zod';
+import { ensureServerHealthy, handleToolError } from './tool-helpers.js';
 
 export class TaskTools {
   /**
@@ -26,21 +25,7 @@ export class TaskTools {
       const validated = CreateTaskSchema.parse(input);
       configManager.logIfDebug('Creating task:', validated);
 
-      // First check if server is reachable
-      const isHealthy = await lifeupClient.healthCheck();
-      if (!isHealthy) {
-        throw new LifeUpError(
-          'LifeUp server is unreachable',
-          'SERVER_UNREACHABLE',
-          'The LifeUp server is not responding. Please:\n' +
-          '1. Ensure LifeUp is running on your Android device\n' +
-          '2. Check your WiFi connection\n' +
-          `3. Verify the IP address is correct (current: ${configManager.getConfig().host})\n\n` +
-          'If the IP has changed, update it with:\n' +
-          '  LIFEUP_HOST=<new-ip>',
-          true
-        );
-      }
+      await ensureServerHealthy();
 
       const task = await lifeupClient.createTask(validated);
 
@@ -59,16 +44,7 @@ export class TaskTools {
           : '')
       );
     } catch (error) {
-      if (error instanceof LifeUpError) {
-        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
-      }
-
-      if (error instanceof ZodError) {
-        const messages = error.issues.map((e) => `- ${e.path.join('.')}: ${e.message}`).join('\n');
-        return `❌ Invalid input:\n${messages}`;
-      }
-
-      return `❌ Unexpected error creating task: ${(error as Error).message}`;
+      return handleToolError(error, 'creating task');
     }
   }
 
@@ -77,15 +53,7 @@ export class TaskTools {
    */
   static async listAllTasks(): Promise<string> {
     try {
-      const isHealthy = await lifeupClient.healthCheck();
-      if (!isHealthy) {
-        throw new LifeUpError(
-          'LifeUp server is unreachable',
-          'SERVER_UNREACHABLE',
-          'The LifeUp server is not responding.',
-          true
-        );
-      }
+      await ensureServerHealthy();
 
       const tasks = await lifeupClient.getAllTasks();
 
@@ -124,10 +92,7 @@ export class TaskTools {
 
       return result;
     } catch (error) {
-      if (error instanceof LifeUpError) {
-        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
-      }
-      return `❌ Error fetching tasks: ${(error as Error).message}`;
+      return handleToolError(error, 'fetching tasks');
     }
   }
 
@@ -139,15 +104,7 @@ export class TaskTools {
       const validated = SearchTasksSchema.parse(input);
       configManager.logIfDebug('Searching tasks:', validated);
 
-      const isHealthy = await lifeupClient.healthCheck();
-      if (!isHealthy) {
-        throw new LifeUpError(
-          'LifeUp server is unreachable',
-          'SERVER_UNREACHABLE',
-          'The LifeUp server is not responding.',
-          true
-        );
-      }
+      await ensureServerHealthy();
 
       let tasks: Types.Task[] = [];
 
@@ -199,16 +156,7 @@ export class TaskTools {
 
       return result;
     } catch (error) {
-      if (error instanceof LifeUpError) {
-        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
-      }
-
-      if (error instanceof ZodError) {
-        const messages = error.issues.map((e) => `- ${e.path.join('.')}: ${e.message}`).join('\n');
-        return `❌ Invalid input:\n${messages}`;
-      }
-
-      return `❌ Error searching tasks: ${(error as Error).message}`;
+      return handleToolError(error, 'searching tasks');
     }
   }
 
@@ -220,15 +168,7 @@ export class TaskTools {
       const validated = TaskHistorySchema.parse(input);
       configManager.logIfDebug('Fetching task history:', validated);
 
-      const isHealthy = await lifeupClient.healthCheck();
-      if (!isHealthy) {
-        throw new LifeUpError(
-          'LifeUp server is unreachable',
-          'SERVER_UNREACHABLE',
-          'The LifeUp server is not responding.',
-          true
-        );
-      }
+      await ensureServerHealthy();
 
       const history = await lifeupClient.getTaskHistory(validated.offset, validated.limit);
 
@@ -248,16 +188,7 @@ export class TaskTools {
 
       return result;
     } catch (error) {
-      if (error instanceof LifeUpError) {
-        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
-      }
-
-      if (error instanceof ZodError) {
-        const messages = error.issues.map((e) => `- ${e.path.join('.')}: ${e.message}`).join('\n');
-        return `❌ Invalid input:\n${messages}`;
-      }
-
-      return `❌ Error fetching history: ${(error as Error).message}`;
+      return handleToolError(error, 'fetching task history');
     }
   }
 
@@ -266,15 +197,7 @@ export class TaskTools {
    */
   static async getTaskCategories(): Promise<string> {
     try {
-      const isHealthy = await lifeupClient.healthCheck();
-      if (!isHealthy) {
-        throw new LifeUpError(
-          'LifeUp server is unreachable',
-          'SERVER_UNREACHABLE',
-          'The LifeUp server is not responding.',
-          true
-        );
-      }
+      await ensureServerHealthy();
 
       const categories = await lifeupClient.getTaskCategories();
 
@@ -290,10 +213,7 @@ export class TaskTools {
 
       return result;
     } catch (error) {
-      if (error instanceof LifeUpError) {
-        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
-      }
-      return `❌ Error fetching categories: ${(error as Error).message}`;
+      return handleToolError(error, 'fetching task categories');
     }
   }
 }

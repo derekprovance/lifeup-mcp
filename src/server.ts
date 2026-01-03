@@ -6,7 +6,7 @@ import {
   Server,
 } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, CallToolRequest } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { lifeupClient } from './client/lifeup-client.js';
 import { TaskTools } from './tools/task-tools.js';
@@ -15,6 +15,20 @@ import { UserInfoTools } from './tools/user-info-tools.js';
 import { ShopTools } from './tools/shop-tools.js';
 import { MutationTools } from './tools/mutation-tools.js';
 import { configManager } from './config/config.js';
+
+const MUTATION_TOOLS = [
+  'create_task',
+  'edit_task',
+  'create_achievement',
+  'update_achievement',
+  'delete_achievement',
+  'add_shop_item',
+  'edit_shop_item',
+  'apply_penalty',
+  'edit_skill',
+] as const;
+
+type MutationTool = typeof MUTATION_TOOLS[number];
 
 class LifeUpServer {
   private server: Server;
@@ -43,7 +57,9 @@ class LifeUpServer {
     });
 
     // Register tools/list handler
-    (this.server.setRequestHandler as any)(
+    // The MCP SDK's setRequestHandler has complex generic types that TypeScript struggles with
+    // We use a cast to Function to bypass type checking while maintaining runtime safety
+    (this.server.setRequestHandler as unknown as Function)(
       ListToolsSchema,
       async () => {
         return {
@@ -53,34 +69,15 @@ class LifeUpServer {
     );
 
     // Register tools/call handler
-    (this.server.setRequestHandler as any)(
+    (this.server.setRequestHandler as unknown as Function)(
       CallToolRequestSchema,
-      async (request: any) => {
+      async (request: CallToolRequest) => {
         configManager.logIfDebug(`Tool called: ${request.params.name}`, request.params.arguments);
 
         try {
           let result: string;
 
           switch (request.params.name) {
-            case 'check_lifeup_connection': {
-              const isHealthy = await lifeupClient.healthCheck();
-              const config = configManager.getConfig();
-
-              if (isHealthy) {
-                result = `✓ Successfully connected to LifeUp at ${config.baseUrl}`;
-              } else {
-                result =
-                  `❌ Cannot reach LifeUp device at ${config.baseUrl}\n\n` +
-                  `Troubleshooting steps:\n` +
-                  `1. Make sure LifeUp app is running on the device\n` +
-                  `2. Verify the device is connected to the same network\n` +
-                  `3. Check that the IP address is correct (currently: ${config.host})\n` +
-                  `4. Ensure LifeUp HTTP API is enabled in settings\n\n` +
-                  `Once the device is reachable, try your request again.`;
-              }
-              break;
-            }
-
             case 'create_task':
               result = await TaskTools.createTask(request.params.arguments);
               break;
@@ -205,17 +202,7 @@ class LifeUpServer {
   }
 
   private getTools(): any[] {
-    return [
-      {
-        name: 'check_lifeup_connection',
-        description:
-          'Check if the LifeUp device is reachable. Use this to verify connectivity or troubleshoot connection issues. ' +
-          'Returns connection status and helpful information if the device cannot be reached.',
-        inputSchema: {
-          type: 'object',
-          properties: {},
-        },
-      },
+    const allTools = [
       {
         name: 'create_task',
         description:
@@ -942,6 +929,13 @@ class LifeUpServer {
         },
       },
     ];
+
+    // Filter out mutation tools if in safe mode
+    if (configManager.isSafeMode()) {
+      return allTools.filter(tool => !MUTATION_TOOLS.includes(tool.name as MutationTool));
+    }
+
+    return allTools;
   }
 
   async start(): Promise<void> {
@@ -1002,12 +996,14 @@ class LifeUpServer {
 // Global error handlers to prevent unhandled rejections from crashing
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  // Don't exit, just log the error
+  console.error('Exiting due to unhandled rejection to prevent running in corrupted state');
+  process.exit(1);
 });
 
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
-  // Don't exit, just log the error
+  console.error('Exiting due to uncaught exception to prevent running in corrupted state');
+  process.exit(1);
 });
 
 // Main entry point

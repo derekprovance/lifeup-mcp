@@ -75,7 +75,7 @@ export class LifeUpClient {
       if (response.code === RESPONSE_CODE.SUCCESS) {
         // Parse the response to get task details
         // The API may return the created task ID or confirmation
-        return { ...request, id: Date.now(), gid: 1 } as any;
+        return { ...request, id: Date.now(), gid: 1 } as Types.Task;
       }
 
       throw new LifeUpError(

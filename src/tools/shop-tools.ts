@@ -4,10 +4,9 @@
 
 import { lifeupClient } from '../client/lifeup-client.js';
 import { configManager } from '../config/config.js';
-import { ErrorHandler, LifeUpError } from '../error/error-handler.js';
 import { SearchShopItemsSchema, type SearchShopItemsInput } from '../config/validation.js';
 import * as Types from '../client/types.js';
-import { ZodError } from 'zod';
+import { ensureServerHealthy, handleToolError } from './tool-helpers.js';
 
 export class ShopTools {
   /**
@@ -15,15 +14,7 @@ export class ShopTools {
    */
   static async listShopItems(): Promise<string> {
     try {
-      const isHealthy = await lifeupClient.healthCheck();
-      if (!isHealthy) {
-        throw new LifeUpError(
-          'LifeUp server is unreachable',
-          'SERVER_UNREACHABLE',
-          'The LifeUp server is not responding.',
-          true
-        );
-      }
+      await ensureServerHealthy();
 
       const items = await lifeupClient.getShopItems();
 
@@ -68,10 +59,7 @@ export class ShopTools {
 
       return result;
     } catch (error) {
-      if (error instanceof LifeUpError) {
-        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
-      }
-      return `❌ Error fetching shop items: ${(error as Error).message}`;
+      return handleToolError(error, 'fetching shop items');
     }
   }
 
@@ -80,15 +68,7 @@ export class ShopTools {
    */
   static async getShopCategories(): Promise<string> {
     try {
-      const isHealthy = await lifeupClient.healthCheck();
-      if (!isHealthy) {
-        throw new LifeUpError(
-          'LifeUp server is unreachable',
-          'SERVER_UNREACHABLE',
-          'The LifeUp server is not responding.',
-          true
-        );
-      }
+      await ensureServerHealthy();
 
       const categories = await lifeupClient.getItemCategories();
 
@@ -106,10 +86,7 @@ export class ShopTools {
 
       return result;
     } catch (error) {
-      if (error instanceof LifeUpError) {
-        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
-      }
-      return `❌ Error fetching shop categories: ${(error as Error).message}`;
+      return handleToolError(error, 'fetching shop categories');
     }
   }
 
@@ -121,15 +98,7 @@ export class ShopTools {
       const validated = SearchShopItemsSchema.parse(input);
       configManager.logIfDebug('Searching shop items:', validated);
 
-      const isHealthy = await lifeupClient.healthCheck();
-      if (!isHealthy) {
-        throw new LifeUpError(
-          'LifeUp server is unreachable',
-          'SERVER_UNREACHABLE',
-          'The LifeUp server is not responding.',
-          true
-        );
-      }
+      await ensureServerHealthy();
 
       let items: Types.Item[] = await lifeupClient.getShopItems();
 
@@ -188,16 +157,7 @@ export class ShopTools {
 
       return result;
     } catch (error) {
-      if (error instanceof LifeUpError) {
-        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
-      }
-
-      if (error instanceof ZodError) {
-        const messages = error.issues.map((e) => `- ${e.path.join('.')}: ${e.message}`).join('\n');
-        return `❌ Invalid input:\n${messages}`;
-      }
-
-      return `❌ Error searching items: ${(error as Error).message}`;
+      return handleToolError(error, 'searching shop items');
     }
   }
 }

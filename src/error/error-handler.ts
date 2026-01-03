@@ -67,7 +67,7 @@ export class ErrorHandler {
 
   static handleApiError(error: AxiosError, context: string): LifeUpError {
     const status = error.response?.status;
-    const responseData = error.response?.data as any;
+    const responseData = error.response?.data as Record<string, unknown> | undefined;
 
     if (status === 401) {
       return new LifeUpError(

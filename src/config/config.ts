@@ -21,6 +21,7 @@ export interface LifeUpConfig {
   timeout: number;
   retries: number;
   debug: boolean;
+  safeMode: boolean;
 }
 
 export class ConfigManager {
@@ -31,6 +32,7 @@ export class ConfigManager {
     const port = overrides?.port || parseInt(process.env.LIFEUP_PORT || String(DEFAULT_CONFIG.PORT), 10);
     const apiToken = overrides?.apiToken || process.env.LIFEUP_API_TOKEN;
     const debug = overrides?.debug ?? (process.env.DEBUG === 'true');
+    const safeMode = overrides?.safeMode ?? (process.env.SAFE_MODE === 'true');
 
     this.config = {
       host,
@@ -40,6 +42,7 @@ export class ConfigManager {
       timeout: overrides?.timeout || DEFAULT_CONFIG.TIMEOUT,
       retries: overrides?.retries || DEFAULT_CONFIG.RETRIES,
       debug,
+      safeMode,
     };
   }
 
@@ -75,6 +78,10 @@ export class ConfigManager {
 
   isDebugMode(): boolean {
     return this.config.debug;
+  }
+
+  isSafeMode(): boolean {
+    return this.config.safeMode;
   }
 
   logIfDebug(message: string, data?: any): void {

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**LifeUp MCP Server** is a Model Context Protocol (MCP) server that enables Claude to interact with the LifeUp task management app running on a local Android device. The server acts as a bridge between Claude and LifeUp's HTTP API, exposing 21 tools for task creation, achievement management, querying, user profile information, shop browsing, and data mutation operations.
+**LifeUp MCP Server** is a Model Context Protocol (MCP) server that enables Claude to interact with the LifeUp task management app running on a local Android device. The server acts as a bridge between Claude and LifeUp's HTTP API, exposing 20 tools for task creation, achievement management, querying, user profile information, shop browsing, and data mutation operations.
 
 ## Architecture
 
@@ -73,9 +73,10 @@ LifeUp Cloud API (Android Device)
 - All operations are "safe" - they don't auto-grant rewards or auto-complete tasks
 
 **config/config.ts** - Configuration singleton
-- Loads environment variables (LIFEUP_HOST, LIFEUP_PORT, LIFEUP_API_TOKEN, DEBUG)
+- Loads environment variables (LIFEUP_HOST, LIFEUP_PORT, LIFEUP_API_TOKEN, DEBUG, SAFE_MODE)
 - Provides `configManager` singleton
 - Debug logging utility for troubleshooting
+- Safe mode support for disabling mutation tools
 
 **config/validation.ts** - Zod schemas for input validation
 - `CreateTaskSchema`, `SearchTasksSchema`, `TaskHistorySchema`, `AchievementMatchSchema`, `SearchShopItemsSchema`
@@ -241,6 +242,7 @@ To improve: modify keyword extraction or confidence calculation logic.
 - **LIFEUP_PORT** - HTTP API port (default: 13276)
 - **LIFEUP_API_TOKEN** - Optional authentication token (leave empty if not configured)
 - **DEBUG** - Enable debug logging (default: false, set to "true" for logs)
+- **SAFE_MODE** - Disable mutation tools when true (default: false). When enabled, only read-only query tools are available
 
 ### Runtime Configuration
 
@@ -253,7 +255,7 @@ Timeout, retries, and other runtime config defined in src/config/config.ts:
 
 The project includes a basic test suite (test-mcp.js) that verifies:
 1. Server startup
-2. All 21 tools are registered
+2. All 20 tools are registered (11 read-only tools when SAFE_MODE=true)
 3. Input validation rejects invalid requests
 4. Error handling works for connectivity issues
 

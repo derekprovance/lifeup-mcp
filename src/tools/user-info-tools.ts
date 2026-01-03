@@ -3,9 +3,8 @@
  */
 
 import { lifeupClient } from '../client/lifeup-client.js';
-import { configManager } from '../config/config.js';
-import { ErrorHandler, LifeUpError } from '../error/error-handler.js';
 import * as Types from '../client/types.js';
+import { ensureServerHealthy, handleToolError } from './tool-helpers.js';
 
 export class UserInfoTools {
   /**
@@ -13,15 +12,7 @@ export class UserInfoTools {
    */
   static async listSkills(): Promise<string> {
     try {
-      const isHealthy = await lifeupClient.healthCheck();
-      if (!isHealthy) {
-        throw new LifeUpError(
-          'LifeUp server is unreachable',
-          'SERVER_UNREACHABLE',
-          'The LifeUp server is not responding.',
-          true
-        );
-      }
+      await ensureServerHealthy();
 
       const skills = await lifeupClient.getSkills();
 
@@ -54,10 +45,7 @@ export class UserInfoTools {
 
       return result;
     } catch (error) {
-      if (error instanceof LifeUpError) {
-        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
-      }
-      return `❌ Error fetching skills: ${(error as Error).message}`;
+      return handleToolError(error, 'fetching skills');
     }
   }
 
@@ -66,15 +54,7 @@ export class UserInfoTools {
    */
   static async getUserInfo(): Promise<string> {
     try {
-      const isHealthy = await lifeupClient.healthCheck();
-      if (!isHealthy) {
-        throw new LifeUpError(
-          'LifeUp server is unreachable',
-          'SERVER_UNREACHABLE',
-          'The LifeUp server is not responding.',
-          true
-        );
-      }
+      await ensureServerHealthy();
 
       const info = await lifeupClient.getInfo();
 
@@ -113,10 +93,7 @@ export class UserInfoTools {
 
       return result;
     } catch (error) {
-      if (error instanceof LifeUpError) {
-        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
-      }
-      return `❌ Error fetching user info: ${(error as Error).message}`;
+      return handleToolError(error, 'fetching user info');
     }
   }
 
@@ -125,15 +102,7 @@ export class UserInfoTools {
    */
   static async getCoinBalance(): Promise<string> {
     try {
-      const isHealthy = await lifeupClient.healthCheck();
-      if (!isHealthy) {
-        throw new LifeUpError(
-          'LifeUp server is unreachable',
-          'SERVER_UNREACHABLE',
-          'The LifeUp server is not responding.',
-          true
-        );
-      }
+      await ensureServerHealthy();
 
       const coinInfo = await lifeupClient.getCoinInfo();
 
@@ -172,10 +141,7 @@ export class UserInfoTools {
 
       return result;
     } catch (error) {
-      if (error instanceof LifeUpError) {
-        return `❌ Error: ${ErrorHandler.formatErrorForClaude(error)}`;
-      }
-      return `❌ Error fetching coin balance: ${(error as Error).message}`;
+      return handleToolError(error, 'fetching coin balance');
     }
   }
 }
