@@ -553,7 +553,8 @@ class LifeUpServer {
         name: 'update_achievement',
         description:
           'Update an existing achievement by ID. Can modify any property including name, conditions, rewards, and unlock status. ' +
-          'Use absolute or relative set types for numeric rewards.',
+          'Use absolute or relative set types for numeric rewards. ' +
+          'NOTE: Updating conditions_json may not work reliably - verify changes in app or use delete + recreate as a workaround.',
         inputSchema: {
           type: 'object',
           properties: {

@@ -17,6 +17,35 @@ import {
 import * as Types from '../client/types.js';
 import { ensureServerHealthy, handleToolError } from './tool-helpers.js';
 
+/**
+ * Get human-readable description for achievement condition type
+ */
+function getConditionTypeDescription(type: number): string {
+  const types: Record<number, string> = {
+    0: 'Complete specific task',
+    1: 'Task completion streak',
+    3: 'Total pomodoros',
+    4: 'Days using LifeUp',
+    5: 'Like count',
+    6: 'Daily streak',
+    7: 'Reach coin amount',
+    8: 'Coins earned in one day',
+    9: 'Task pomodoro count',
+    10: 'Item purchase count',
+    11: 'Item usage count',
+    12: 'Loot box item count',
+    13: 'Skill level',
+    14: 'Character level',
+    15: 'Total items obtained',
+    16: 'Items from synthesis',
+    17: 'Current item quantity',
+    18: 'Task focus duration',
+    19: 'ATM savings',
+    20: 'External API trigger',
+  };
+  return types[type] || `Condition type ${type}`;
+}
+
 export class AchievementTools {
   /**
    * List all available achievements or achievement categories
@@ -361,6 +390,26 @@ export class AchievementTools {
 
       if (updates.length > 0) {
         result += `**Updated**: ${updates.join(', ')}\n`;
+      }
+
+      // Add warning when conditions_json is provided
+      if (validated.conditions_json && validated.conditions_json.length > 0) {
+        result += `\n⚠️  **Important Notice About Conditions**:\n`;
+        result += `The LifeUp API may not support updating conditions on existing achievements.\n`;
+        result += `Please verify in your LifeUp app that the conditions were applied.\n\n`;
+
+        result += `**Conditions you requested**:\n`;
+        validated.conditions_json.forEach((cond, idx) => {
+          const condType = getConditionTypeDescription(cond.type);
+          result += `  ${idx + 1}. ${condType}`;
+          if (cond.related_id) result += ` (ID: ${cond.related_id})`;
+          result += ` - Target: ${cond.target}\n`;
+        });
+
+        result += `\n**If conditions didn't update, try this workaround**:\n`;
+        result += `1. Use \`delete_achievement\` to remove achievement #${validated.edit_id}\n`;
+        result += `2. Use \`create_achievement\` with the same properties + conditions_json\n`;
+        result += `3. Or set conditions during initial creation, not after\n`;
       }
 
       return result;

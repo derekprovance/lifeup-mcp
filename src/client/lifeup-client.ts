@@ -501,9 +501,32 @@ export class LifeUpClient {
     try {
       const url = this.buildAchievementUrl(request);
       this.configManager.logIfDebug('Updating achievement with URL:', url);
+
+      // Enhanced debug logging for condition updates
+      if (request.conditions_json && request.conditions_json.length > 0) {
+        this.configManager.logIfDebug('Achievement condition update requested:', {
+          achievementId: request.edit_id,
+          conditionCount: request.conditions_json.length,
+          conditions: request.conditions_json,
+          decodedUrl: decodeURIComponent(url),
+        });
+        this.configManager.logIfDebug(
+          'WARNING: Updating conditions on existing achievement may not be supported by LifeUp API'
+        );
+      }
+
       const response = await this.executeUrlScheme(url);
 
       this.configManager.logIfDebug('Update achievement response:', response);
+
+      // Warning if generic success response with conditions
+      if (response.code === RESPONSE_CODE.SUCCESS && request.conditions_json && request.conditions_json.length > 0) {
+        if (response.data === 'success') {
+          this.configManager.logIfDebug(
+            'API returned generic success for condition update - verify changes in app'
+          );
+        }
+      }
 
       if (response.code === RESPONSE_CODE.SUCCESS) {
         return response;
@@ -632,6 +655,20 @@ export class LifeUpClient {
     }
 
     const url = `${LIFEUP_URL_SCHEMES.ACHIEVEMENT}?${params.toString().replace(/\+/g, '%20')}`;
+
+    // Enhanced debug logging for achievement URL building
+    if (this.configManager.getConfig().debug) {
+      const isEditWithConditions = 'edit_id' in request && request.edit_id && request.conditions_json && request.conditions_json.length > 0;
+      if (isEditWithConditions) {
+        this.configManager.logIfDebug('Built achievement URL for condition update:', {
+          hasEditId: true,
+          hasConditions: true,
+          conditionCount: request.conditions_json?.length || 0,
+          decodedUrl: decodeURIComponent(url),
+        });
+      }
+    }
+
     return url;
   }
 
