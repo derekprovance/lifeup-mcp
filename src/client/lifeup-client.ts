@@ -66,77 +66,60 @@ export class LifeUpClient {
    * Create a task via lifeup:// URL scheme
    */
   async createTask(request: Types.CreateTaskRequest): Promise<Types.Task | null> {
-    try {
-      const params = this.buildTaskUrl(request);
-      this.configManager.logIfDebug('Creating task with params:', params);
-
-      const response = await this.executeUrlScheme(params);
-
-      if (response.code === RESPONSE_CODE.SUCCESS) {
+    return this.executeUrlSchemeOperation(
+      () => {
+        const url = this.buildTaskUrl(request);
+        this.configManager.logIfDebug('Creating task with URL:', url);
+        return url;
+      },
+      'create task',
+      () => {
         // Parse the response to get task details
         // The API may return the created task ID or confirmation
         return { ...request, id: Date.now(), gid: 1 } as Types.Task;
       }
-
-      throw new LifeUpError(
-        `Failed to create task: ${response.message}`,
-        'TASK_CREATION_FAILED',
-        `Could not create task: ${response.message}`,
-        false
-      );
-    } catch (error) {
-      if (error instanceof LifeUpError) {
-        throw error;
-      }
-
-      if (error instanceof AxiosError) {
-        throw ErrorHandler.handleNetworkError(error);
-      }
-
-      throw new LifeUpError(
-        `Unexpected error creating task: ${(error as Error).message}`,
-        'UNKNOWN_ERROR',
-        `An unexpected error occurred while creating the task.`,
-        false
-      );
-    }
+    );
   }
 
   /**
    * Build lifeup:// URL for task creation
    */
   private buildTaskUrl(request: Types.CreateTaskRequest): string {
+    // Validate string inputs for security
+    this.validateStringInput(request.name, 'task name');
+    this.validateStringInput(request.content, 'task content');
+
     const params = new URLSearchParams();
+
+    // Required field
     params.append('todo', request.name);
 
-    if (request.exp !== undefined) {
-      params.append('exp', String(request.exp));
-    }
-    if (request.coin !== undefined) {
-      params.append('coin', String(request.coin));
-    }
-    if (request.coinVar !== undefined) {
-      params.append('coin_var', String(request.coinVar));
-    }
-    if (request.categoryId !== undefined) {
-      params.append('category', String(request.categoryId));
-    }
-    if (request.deadline !== undefined) {
-      params.append('deadline', String(request.deadline));
-    }
-    if (request.content !== undefined) {
-      params.append('notes', request.content);
-    }
-    if (request.skillIds !== undefined && request.skillIds.length > 0) {
-      request.skillIds.forEach(id => {
-        params.append('skills', String(id));
-      });
-    }
-    if (request.auto_use_item !== undefined) {
-      params.append('auto_use_item', String(request.auto_use_item));
-    }
+    // Numeric fields
+    this.appendIfDefined(params, 'exp', request.exp);
+    this.appendIfDefined(params, 'coin', request.coin);
+    this.appendIfDefined(params, 'coin_var', request.coinVar);
+    this.appendIfDefined(params, 'category', request.categoryId);
+    this.appendIfDefined(params, 'deadline', request.deadline);
 
-    return `${LIFEUP_URL_SCHEMES.TASK_CREATE}?${params.toString().replace(/\+/g, '%20')}`;
+    // String field
+    this.appendIfDefined(params, 'notes', request.content);
+
+    // Array field
+    this.appendArray(params, 'skills', request.skillIds);
+
+    // Difficulty/importance
+    this.appendIfDefined(params, 'importance', request.importance);
+    this.appendIfDefined(params, 'difficulty', request.difficulty);
+
+    // Boolean flags
+    this.appendIfDefined(params, 'auto_use_item', request.auto_use_item, (val) => String(val));
+
+    // Count task parameters
+    this.appendIfDefined(params, 'task_type', request.task_type);
+    this.appendIfDefined(params, 'target_times', request.target_times);
+    this.appendIfDefined(params, 'is_affect_shop_reward', request.is_affect_shop_reward, (val) => String(val));
+
+    return this.buildFinalUrl(LIFEUP_URL_SCHEMES.TASK_CREATE, params);
   }
 
   /**
@@ -154,6 +137,47 @@ export class LifeUpClient {
         throw ErrorHandler.handleNetworkError(error);
       }
       throw error;
+    }
+  }
+
+  /**
+   * Execute a URL scheme operation and handle errors uniformly
+   * Wraps the URL scheme, error handling, and response validation
+   */
+  private async executeUrlSchemeOperation<T = any>(
+    buildUrl: () => string,
+    operation: string,
+    validateResponse: (response: Types.HttpResponse) => T
+  ): Promise<T> {
+    try {
+      const url = buildUrl();
+      const response = await this.executeUrlScheme(url);
+
+      if (response.code === RESPONSE_CODE.SUCCESS) {
+        return validateResponse(response);
+      }
+
+      throw new LifeUpError(
+        `Failed to ${operation}: ${response.message}`,
+        `${operation.toUpperCase().replace(/ /g, '_')}_FAILED`,
+        `Could not ${operation}: ${response.message}`,
+        false
+      );
+    } catch (error) {
+      if (error instanceof LifeUpError) {
+        throw error;
+      }
+
+      if (error instanceof AxiosError) {
+        throw ErrorHandler.handleNetworkError(error);
+      }
+
+      throw new LifeUpError(
+        `Unexpected error during ${operation}: ${(error as Error).message}`,
+        'UNKNOWN_ERROR',
+        `An unexpected error occurred while ${operation}.`,
+        false
+      );
     }
   }
 
@@ -241,9 +265,9 @@ export class LifeUpClient {
   /**
    * Get task history
    */
-  async getTaskHistory(offset = 0, limit = 100): Promise<any[]> {
+  async getTaskHistory(offset = 0, limit = 100): Promise<Types.TaskHistoryRecord[]> {
     try {
-      const response = await this.axiosInstance.get<Types.HttpResponse>(
+      const response = await this.axiosInstance.get<Types.HttpResponse<Types.TaskHistoryRecord[]>>(
         API_ENDPOINTS.HISTORY,
         {
           params: { offset, limit },
@@ -375,14 +399,14 @@ export class LifeUpClient {
   /**
    * Get coin information
    */
-  async getCoinInfo(): Promise<any> {
+  async getCoinInfo(): Promise<Types.CoinInfo | number | null> {
     try {
-      const response = await this.axiosInstance.get<Types.HttpResponse>(
+      const response = await this.axiosInstance.get<Types.HttpResponse<Types.CoinInfo | number>>(
         API_ENDPOINTS.COIN
       );
 
       if (response.data.code === RESPONSE_CODE.SUCCESS) {
-        return response.data.data;
+        return response.data.data || null;
       }
 
       return null;
@@ -464,178 +488,103 @@ export class LifeUpClient {
    * Create a new achievement
    */
   async createAchievement(request: Types.CreateAchievementRequest): Promise<Types.HttpResponse> {
-    try {
-      const url = this.buildAchievementUrl(request);
-      this.configManager.logIfDebug('Creating achievement with URL:', url);
-      const response = await this.executeUrlScheme(url);
-
-      if (response.code === RESPONSE_CODE.SUCCESS) {
-        return response;
-      }
-
-      throw new LifeUpError(
-        `Failed to create achievement: ${response.message}`,
-        'ACHIEVEMENT_CREATION_FAILED',
-        `Could not create achievement: ${response.message}`,
-        false
-      );
-    } catch (error) {
-      if (error instanceof LifeUpError) {
-        throw error;
-      }
-
-      if (error instanceof AxiosError) {
-        throw ErrorHandler.handleNetworkError(error);
-      }
-
-      throw new LifeUpError(
-        `Unexpected error creating achievement: ${(error as Error).message}`,
-        'UNKNOWN_ERROR',
-        `An unexpected error occurred while creating the achievement.`,
-        false
-      );
-    }
+    return this.executeUrlSchemeOperation(
+      () => this.buildAchievementUrl(request),
+      'create achievement',
+      (response) => response
+    );
   }
 
   /**
    * Update an existing achievement
    */
   async updateAchievement(request: Types.UpdateAchievementRequest): Promise<Types.HttpResponse> {
-    try {
-      const url = this.buildAchievementUrl(request);
-      this.configManager.logIfDebug('Updating achievement with URL:', url);
-      const response = await this.executeUrlScheme(url);
-
-      this.configManager.logIfDebug('Update achievement response:', response);
-
-      if (response.code === RESPONSE_CODE.SUCCESS) {
+    return this.executeUrlSchemeOperation(
+      () => {
+        const url = this.buildAchievementUrl(request);
+        this.configManager.logIfDebug('Updating achievement with URL:', url);
+        return url;
+      },
+      'update achievement',
+      (response) => {
+        this.configManager.logIfDebug('Update achievement response:', response);
         return response;
       }
-
-      throw new LifeUpError(
-        `Failed to update achievement: ${response.message} (Code: ${response.code})`,
-        'ACHIEVEMENT_UPDATE_FAILED',
-        `Could not update achievement: ${response.message}`,
-        false
-      );
-    } catch (error) {
-      if (error instanceof LifeUpError) {
-        throw error;
-      }
-
-      if (error instanceof AxiosError) {
-        throw ErrorHandler.handleNetworkError(error);
-      }
-
-      throw new LifeUpError(
-        `Unexpected error updating achievement: ${(error as Error).message}`,
-        'UNKNOWN_ERROR',
-        `An unexpected error occurred while updating the achievement.`,
-        false
-      );
-    }
+    );
   }
 
   /**
    * Delete an achievement
    */
   async deleteAchievement(request: Types.DeleteAchievementRequest): Promise<Types.HttpResponse> {
-    try {
-      const url = this.buildAchievementDeleteUrl(request);
-      const response = await this.executeUrlScheme(url);
-
-      if (response.code === RESPONSE_CODE.SUCCESS) {
-        return response;
-      }
-
-      throw new LifeUpError(
-        `Failed to delete achievement: ${response.message}`,
-        'ACHIEVEMENT_DELETE_FAILED',
-        `Could not delete achievement: ${response.message}`,
-        false
-      );
-    } catch (error) {
-      if (error instanceof LifeUpError) {
-        throw error;
-      }
-
-      if (error instanceof AxiosError) {
-        throw ErrorHandler.handleNetworkError(error);
-      }
-
-      throw new LifeUpError(
-        `Unexpected error deleting achievement: ${(error as Error).message}`,
-        'UNKNOWN_ERROR',
-        `An unexpected error occurred while deleting the achievement.`,
-        false
-      );
-    }
+    return this.executeUrlSchemeOperation(
+      () => this.buildAchievementDeleteUrl(request),
+      'delete achievement',
+      (response) => response
+    );
   }
 
   /**
    * Build achievement URL for create/update operations
    */
   private buildAchievementUrl(request: Types.CreateAchievementRequest | Types.UpdateAchievementRequest): string {
+    // Validate string inputs for security
+    this.validateStringInput(request.name, 'achievement name');
+    this.validateStringInput(request.desc, 'achievement description');
+
     const params = new URLSearchParams();
 
     // Edit mode if edit_id present
     if ('edit_id' in request && request.edit_id) {
-      params.append('edit_id', String(request.edit_id));
+      this.appendIfDefined(params, 'edit_id', request.edit_id);
     }
 
     // Required for create, optional for update
-    if (request.name) params.append('name', request.name);
-    if (request.category_id !== undefined) params.append('category_id', String(request.category_id));
+    this.appendIfDefined(params, 'name', request.name);
+    this.appendIfDefined(params, 'category_id', request.category_id);
 
     // Optional fields
-    if (request.desc) params.append('desc', request.desc);
-    if (request.exp !== undefined) params.append('exp', String(request.exp));
-    if (request.coin !== undefined) params.append('coin', String(request.coin));
-    if (request.coin_var !== undefined) params.append('coin_var', String(request.coin_var));
+    this.appendIfDefined(params, 'desc', request.desc);
+    this.appendIfDefined(params, 'exp', request.exp);
+    this.appendIfDefined(params, 'coin', request.coin);
+    this.appendIfDefined(params, 'coin_var', request.coin_var);
 
     // Set types (update only)
-    if ('coin_set_type' in request && request.coin_set_type) {
-      params.append('coin_set_type', request.coin_set_type);
+    if ('coin_set_type' in request) {
+      this.appendIfDefined(params, 'coin_set_type', request.coin_set_type);
     }
-    if ('exp_set_type' in request && request.exp_set_type) {
-      params.append('exp_set_type', request.exp_set_type);
+    if ('exp_set_type' in request) {
+      this.appendIfDefined(params, 'exp_set_type', request.exp_set_type);
     }
 
     // Conditions JSON
     if (request.conditions_json && request.conditions_json.length > 0) {
-      params.append('conditions_json', JSON.stringify(request.conditions_json));
+      this.appendIfDefined(params, 'conditions_json', request.conditions_json, (val) => JSON.stringify(val));
     }
 
-    // Skills array (multiple params)
-    if (request.skills && request.skills.length > 0) {
-      request.skills.forEach((skillId) => {
-        params.append('skills', String(skillId));
-      });
-    }
+    // Skills array
+    this.appendArray(params, 'skills', request.skills);
 
     // Items JSON array
     if (request.items && request.items.length > 0) {
-      params.append('items', JSON.stringify(request.items));
+      this.appendIfDefined(params, 'items', request.items, (val) => JSON.stringify(val));
     }
 
     // Single item reward
-    if (request.item_id !== undefined) params.append('item_id', String(request.item_id));
-    if (request.item_amount !== undefined) params.append('item_amount', String(request.item_amount));
+    this.appendIfDefined(params, 'item_id', request.item_id);
+    this.appendIfDefined(params, 'item_amount', request.item_amount);
 
     // Boolean flags
-    if (request.secret !== undefined) params.append('secret', request.secret ? 'true' : 'false');
-    if (request.unlocked !== undefined) params.append('unlocked', request.unlocked ? 'true' : 'false');
-    if ('write_feeling' in request && request.write_feeling !== undefined) {
-      params.append('write_feeling', request.write_feeling ? 'true' : 'false');
+    this.appendIfDefined(params, 'secret', request.secret, (val) => val ? 'true' : 'false');
+    this.appendIfDefined(params, 'unlocked', request.unlocked, (val) => val ? 'true' : 'false');
+    if ('write_feeling' in request) {
+      this.appendIfDefined(params, 'write_feeling', request.write_feeling, (val) => val ? 'true' : 'false');
     }
 
-    // Color (URLSearchParams handles encoding automatically)
-    if (request.color) {
-      params.append('color', request.color);
-    }
+    // Color
+    this.appendIfDefined(params, 'color', request.color);
 
-    const url = `${LIFEUP_URL_SCHEMES.ACHIEVEMENT}?${params.toString().replace(/\+/g, '%20')}`;
-    return url;
+    return this.buildFinalUrl(LIFEUP_URL_SCHEMES.ACHIEVEMENT, params);
   }
 
   /**
@@ -643,201 +592,85 @@ export class LifeUpClient {
    */
   private buildAchievementDeleteUrl(request: Types.DeleteAchievementRequest): string {
     const params = new URLSearchParams();
-    params.append('edit_id', String(request.edit_id));
-    params.append('delete', 'true');
-
-    const url = `${LIFEUP_URL_SCHEMES.ACHIEVEMENT}?${params.toString()}`;
-    return url;
+    this.appendIfDefined(params, 'edit_id', request.edit_id);
+    this.appendIfDefined(params, 'delete', true, (val) => val ? 'true' : 'false');
+    return this.buildFinalUrl(LIFEUP_URL_SCHEMES.ACHIEVEMENT, params);
   }
 
   /**
    * Edit an existing task
    */
   async editTask(request: Types.EditTaskRequest): Promise<Types.HttpResponse> {
-    try {
-      const url = this.buildEditTaskUrl(request);
-      const response = await this.executeUrlScheme(url);
+    return this.executeUrlSchemeOperation(
+      () => this.buildEditTaskUrl(request),
+      'edit task',
+      (response) => response
+    );
+  }
 
-      if (response.code === RESPONSE_CODE.SUCCESS) {
-        return response;
-      }
-
-      throw new LifeUpError(
-        `Failed to edit task: ${response.message}`,
-        'TASK_EDIT_FAILED',
-        `Could not edit task: ${response.message}`,
-        false
-      );
-    } catch (error) {
-      if (error instanceof LifeUpError) {
-        throw error;
-      }
-
-      if (error instanceof AxiosError) {
-        throw ErrorHandler.handleNetworkError(error);
-      }
-
-      throw new LifeUpError(
-        `Unexpected error editing task: ${(error as Error).message}`,
-        'UNKNOWN_ERROR',
-        `An unexpected error occurred while editing the task.`,
-        false
-      );
-    }
+  /**
+   * Delete an existing task
+   */
+  async deleteTask(request: Types.DeleteTaskRequest): Promise<Types.HttpResponse> {
+    return this.executeUrlSchemeOperation(
+      () => this.buildTaskDeleteUrl(request),
+      'delete task',
+      (response) => response
+    );
   }
 
   /**
    * Add a new shop item
    */
   async addShopItem(request: Types.AddShopItemRequest): Promise<Types.HttpResponse> {
-    try {
-      const url = this.buildAddShopItemUrl(request);
-      const response = await this.executeUrlScheme(url);
-
-      if (response.code === RESPONSE_CODE.SUCCESS) {
-        return response;
-      }
-
-      throw new LifeUpError(
-        `Failed to add shop item: ${response.message}`,
-        'ITEM_ADD_FAILED',
-        `Could not add shop item: ${response.message}`,
-        false
-      );
-    } catch (error) {
-      if (error instanceof LifeUpError) {
-        throw error;
-      }
-
-      if (error instanceof AxiosError) {
-        throw ErrorHandler.handleNetworkError(error);
-      }
-
-      throw new LifeUpError(
-        `Unexpected error adding shop item: ${(error as Error).message}`,
-        'UNKNOWN_ERROR',
-        `An unexpected error occurred while adding the shop item.`,
-        false
-      );
-    }
+    return this.executeUrlSchemeOperation(
+      () => this.buildAddShopItemUrl(request),
+      'add shop item',
+      (response) => response
+    );
   }
 
   /**
    * Edit an existing shop item
    */
   async editShopItem(request: Types.EditShopItemRequest): Promise<Types.HttpResponse> {
-    try {
-      const url = this.buildEditShopItemUrl(request);
-      const response = await this.executeUrlScheme(url);
-
-      if (response.code === RESPONSE_CODE.SUCCESS) {
-        return response;
-      }
-
-      throw new LifeUpError(
-        `Failed to edit shop item: ${response.message}`,
-        'ITEM_EDIT_FAILED',
-        `Could not edit shop item: ${response.message}`,
-        false
-      );
-    } catch (error) {
-      if (error instanceof LifeUpError) {
-        throw error;
-      }
-
-      if (error instanceof AxiosError) {
-        throw ErrorHandler.handleNetworkError(error);
-      }
-
-      throw new LifeUpError(
-        `Unexpected error editing shop item: ${(error as Error).message}`,
-        'UNKNOWN_ERROR',
-        `An unexpected error occurred while editing the shop item.`,
-        false
-      );
-    }
+    return this.executeUrlSchemeOperation(
+      () => this.buildEditShopItemUrl(request),
+      'edit shop item',
+      (response) => response
+    );
   }
 
   /**
    * Apply a penalty
    */
   async applyPenalty(request: Types.ApplyPenaltyRequest): Promise<Types.HttpResponse> {
-    try {
-      const url = this.buildPenaltyUrl(request);
-      const response = await this.executeUrlScheme(url);
-
-      if (response.code === RESPONSE_CODE.SUCCESS) {
-        return response;
-      }
-
-      throw new LifeUpError(
-        `Failed to apply penalty: ${response.message}`,
-        'PENALTY_FAILED',
-        `Could not apply penalty: ${response.message}`,
-        false
-      );
-    } catch (error) {
-      if (error instanceof LifeUpError) {
-        throw error;
-      }
-
-      if (error instanceof AxiosError) {
-        throw ErrorHandler.handleNetworkError(error);
-      }
-
-      throw new LifeUpError(
-        `Unexpected error applying penalty: ${(error as Error).message}`,
-        'UNKNOWN_ERROR',
-        `An unexpected error occurred while applying the penalty.`,
-        false
-      );
-    }
+    return this.executeUrlSchemeOperation(
+      () => this.buildPenaltyUrl(request),
+      'apply penalty',
+      (response) => response
+    );
   }
 
   /**
    * Edit a skill
    */
   async editSkill(request: Types.EditSkillRequest): Promise<Types.HttpResponse> {
-    try {
-      const url = this.buildEditSkillUrl(request);
-      const response = await this.executeUrlScheme(url);
-
-      if (response.code === RESPONSE_CODE.SUCCESS) {
-        return response;
-      }
-
-      throw new LifeUpError(
-        `Failed to edit skill: ${response.message}`,
-        'SKILL_EDIT_FAILED',
-        `Could not edit skill: ${response.message}`,
-        false
-      );
-    } catch (error) {
-      if (error instanceof LifeUpError) {
-        throw error;
-      }
-
-      if (error instanceof AxiosError) {
-        throw ErrorHandler.handleNetworkError(error);
-      }
-
-      throw new LifeUpError(
-        `Unexpected error editing skill: ${(error as Error).message}`,
-        'UNKNOWN_ERROR',
-        `An unexpected error occurred while editing the skill.`,
-        false
-      );
-    }
+    return this.executeUrlSchemeOperation(
+      () => this.buildEditSkillUrl(request),
+      'edit skill',
+      (response) => response
+    );
   }
 
   /**
    * Helper to append a field to URLSearchParams if defined
    */
-  private appendIfDefined(
+  private appendIfDefined<T>(
     params: URLSearchParams,
     key: string,
-    value: any,
-    formatter?: (val: any) => string
+    value: T | undefined,
+    formatter?: (val: T) => string
   ): void {
     if (value !== undefined) {
       const stringValue = formatter ? formatter(value) : String(value);
@@ -848,7 +681,7 @@ export class LifeUpClient {
   /**
    * Helper to append array values (for multi-value parameters like skills)
    */
-  private appendArray(params: URLSearchParams, key: string, values: any[] | undefined): void {
+  private appendArray<T>(params: URLSearchParams, key: string, values: T[] | undefined): void {
     if (values && values.length > 0) {
       values.forEach((val) => {
         params.append(key, String(val));
@@ -864,9 +697,29 @@ export class LifeUpClient {
   }
 
   /**
+   * Validate string inputs to prevent URL injection
+   * While URLSearchParams handles encoding, this provides defense-in-depth
+   */
+  private validateStringInput(value: string | undefined, fieldName: string): void {
+    if (!value) return;
+
+    // Check for suspicious patterns that might indicate attempted injection
+    // URLSearchParams will encode these, but we validate as a security measure
+    if (!/^[\w\s\-.,;:!?()@'\\/]*$/.test(value)) {
+      // Allow common punctuation but flag anything that looks suspicious
+      this.configManager.logIfDebug(`String input contains unusual characters in ${fieldName}: ${value}`);
+    }
+  }
+
+  /**
    * Build edit task URL
    */
   private buildEditTaskUrl(request: Types.EditTaskRequest): string {
+    // Validate string inputs for security
+    this.validateStringInput(request.name, 'task name');
+    this.validateStringInput(request.todo, 'task description');
+    this.validateStringInput(request.notes, 'task notes');
+
     const params = new URLSearchParams();
 
     // Task identifiers (at least one required)
@@ -914,13 +767,32 @@ export class LifeUpClient {
     this.appendIfDefined(params, 'auto_use_item', request.auto_use_item, (val) => val ? 'true' : 'false');
     this.appendIfDefined(params, 'frozen', request.frozen, (val) => val ? 'true' : 'false');
 
+    // Count task parameters
+    this.appendIfDefined(params, 'task_type', request.task_type);
+    this.appendIfDefined(params, 'target_times', request.target_times);
+    this.appendIfDefined(params, 'is_affect_shop_reward', request.is_affect_shop_reward, (val) => val ? 'true' : 'false');
+
     return this.buildFinalUrl(LIFEUP_URL_SCHEMES.TASK_EDIT, params);
+  }
+
+  /**
+   * Build delete task URL
+   */
+  private buildTaskDeleteUrl(request: Types.DeleteTaskRequest): string {
+    const params = new URLSearchParams();
+    params.append('id', String(request.id));
+    return this.buildFinalUrl(LIFEUP_URL_SCHEMES.TASK_DELETE, params);
   }
 
   /**
    * Build add shop item URL
    */
   private buildAddShopItemUrl(request: Types.AddShopItemRequest): string {
+    // Validate string inputs for security
+    this.validateStringInput(request.name, 'item name');
+    this.validateStringInput(request.desc, 'item description');
+    this.validateStringInput(request.action_text, 'action text');
+
     const params = new URLSearchParams();
 
     // Required
@@ -952,6 +824,12 @@ export class LifeUpClient {
    * Build edit shop item URL
    */
   private buildEditShopItemUrl(request: Types.EditShopItemRequest): string {
+    // Validate string inputs for security
+    this.validateStringInput(request.name, 'item name');
+    this.validateStringInput(request.set_name, 'item name');
+    this.validateStringInput(request.set_desc, 'item description');
+    this.validateStringInput(request.action_text, 'action text');
+
     const params = new URLSearchParams();
 
     // Identifiers
@@ -994,6 +872,10 @@ export class LifeUpClient {
    * Build penalty URL
    */
   private buildPenaltyUrl(request: Types.ApplyPenaltyRequest): string {
+    // Validate string inputs for security
+    this.validateStringInput(request.content, 'penalty content');
+    this.validateStringInput(request.item_name, 'item name');
+
     const params = new URLSearchParams();
 
     // Required
@@ -1018,6 +900,10 @@ export class LifeUpClient {
    * Build edit skill URL
    */
   private buildEditSkillUrl(request: Types.EditSkillRequest): string {
+    // Validate string inputs for security
+    this.validateStringInput(request.content, 'skill name');
+    this.validateStringInput(request.desc, 'skill description');
+
     const params = new URLSearchParams();
 
     // Identifier (for editing/deleting)

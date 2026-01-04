@@ -166,6 +166,187 @@ describe('CreateTaskSchema', () => {
       expect(result.skillIds).toEqual([1]);
     });
   });
+
+  describe('auto XP mode (importance/difficulty)', () => {
+    it('accepts task with importance/difficulty but no exp (auto mode)', () => {
+      const result = CreateTaskSchema.parse({
+        name: 'Auto XP Task',
+        importance: 4,
+        difficulty: 3,
+      });
+      expect(result.exp).toBeUndefined();
+      expect(result.importance).toBe(4);
+      expect(result.difficulty).toBe(3);
+    });
+
+    it('accepts task with only importance (auto mode)', () => {
+      const result = CreateTaskSchema.parse({
+        name: 'Task',
+        importance: 3,
+      });
+      expect(result.importance).toBe(3);
+      expect(result.difficulty).toBeUndefined();
+    });
+
+    it('accepts task with only difficulty (auto mode)', () => {
+      const result = CreateTaskSchema.parse({
+        name: 'Task',
+        difficulty: 2,
+      });
+      expect(result.difficulty).toBe(2);
+      expect(result.importance).toBeUndefined();
+    });
+
+    it('rejects importance below 1', () => {
+      expect(() => CreateTaskSchema.parse({ name: 'Task', importance: 0 }))
+        .toThrow('Importance must be between 1 and 4');
+    });
+
+    it('rejects importance above 4', () => {
+      expect(() => CreateTaskSchema.parse({ name: 'Task', importance: 5 }))
+        .toThrow('Importance must be between 1 and 4');
+    });
+
+    it('rejects difficulty below 1', () => {
+      expect(() => CreateTaskSchema.parse({ name: 'Task', difficulty: 0 }))
+        .toThrow('Difficulty must be between 1 and 4');
+    });
+
+    it('rejects difficulty above 4', () => {
+      expect(() => CreateTaskSchema.parse({ name: 'Task', difficulty: 5 }))
+        .toThrow('Difficulty must be between 1 and 4');
+    });
+
+    it('still requires skillIds when exp is explicitly set (even with importance/difficulty)', () => {
+      expect(() => CreateTaskSchema.parse({
+        name: 'Task',
+        exp: 50,
+        importance: 3,
+        difficulty: 3,
+      })).toThrow('When exp is specified, skillIds must be provided as a non-empty array');
+    });
+
+    it('accepts exp + skillIds with importance/difficulty (explicit XP takes precedence)', () => {
+      const result = CreateTaskSchema.parse({
+        name: 'Task',
+        exp: 100,
+        skillIds: [1],
+        importance: 3,
+        difficulty: 3,
+      });
+      expect(result.exp).toBe(100);
+      expect(result.skillIds).toEqual([1]);
+      expect(result.importance).toBe(3);
+      expect(result.difficulty).toBe(3);
+    });
+  });
+
+  describe('count task validation (task_type and target_times)', () => {
+    it('accepts count task with valid task_type and target_times', () => {
+      const result = CreateTaskSchema.parse({
+        name: 'Count Task',
+        task_type: 1,
+        target_times: 5,
+      });
+      expect(result.task_type).toBe(1);
+      expect(result.target_times).toBe(5);
+    });
+
+    it('accepts count task with is_affect_shop_reward', () => {
+      const result = CreateTaskSchema.parse({
+        name: 'Count Task',
+        task_type: 1,
+        target_times: 3,
+        is_affect_shop_reward: true,
+      });
+      expect(result.is_affect_shop_reward).toBe(true);
+    });
+
+    it('rejects count task (task_type=1) without target_times', () => {
+      expect(() => CreateTaskSchema.parse({
+        name: 'Count Task',
+        task_type: 1,
+      })).toThrow('When task_type is 1 (count task), target_times must be provided and must be positive');
+    });
+
+    it('rejects count task with zero target_times', () => {
+      expect(() => CreateTaskSchema.parse({
+        name: 'Count Task',
+        task_type: 1,
+        target_times: 0,
+      })).toThrow('Target times must be positive');
+    });
+
+    it('rejects count task with negative target_times', () => {
+      expect(() => CreateTaskSchema.parse({
+        name: 'Count Task',
+        task_type: 1,
+        target_times: -5,
+      })).toThrow('Target times must be positive');
+    });
+
+    it('accepts normal task (task_type=0) without target_times', () => {
+      const result = CreateTaskSchema.parse({
+        name: 'Normal Task',
+        task_type: 0,
+      });
+      expect(result.task_type).toBe(0);
+      expect(result.target_times).toBeUndefined();
+    });
+
+    it('accepts negative task (task_type=2) without target_times', () => {
+      const result = CreateTaskSchema.parse({
+        name: 'Negative Task',
+        task_type: 2,
+      });
+      expect(result.task_type).toBe(2);
+    });
+
+    it('accepts API task (task_type=3) without target_times', () => {
+      const result = CreateTaskSchema.parse({
+        name: 'API Task',
+        task_type: 3,
+      });
+      expect(result.task_type).toBe(3);
+    });
+
+    it('rejects task_type below 0', () => {
+      expect(() => CreateTaskSchema.parse({
+        name: 'Task',
+        task_type: -1,
+      })).toThrow('Task type must be 0-3');
+    });
+
+    it('rejects task_type above 3', () => {
+      expect(() => CreateTaskSchema.parse({
+        name: 'Task',
+        task_type: 4,
+      })).toThrow('Task type must be 0-3');
+    });
+
+    it('accepts task without task_type (defaults to normal)', () => {
+      const result = CreateTaskSchema.parse({
+        name: 'Task',
+      });
+      expect(result.task_type).toBeUndefined();
+    });
+
+    it('accepts target_times without task_type (validation passes)', () => {
+      const result = CreateTaskSchema.parse({
+        name: 'Task',
+        target_times: 5,
+      });
+      expect(result.target_times).toBe(5);
+    });
+
+    it('accepts is_affect_shop_reward without task_type', () => {
+      const result = CreateTaskSchema.parse({
+        name: 'Task',
+        is_affect_shop_reward: true,
+      });
+      expect(result.is_affect_shop_reward).toBe(true);
+    });
+  });
 });
 
 // ============================================================================
@@ -864,6 +1045,156 @@ describe('EditTaskSchema', () => {
       const result = EditTaskSchema.parse({ id: 1, exp: 0, skills: [1] });
       expect(result.exp).toBe(0);
       expect(result.skills).toEqual([1]);
+    });
+  });
+
+  describe('auto XP mode (importance/difficulty)', () => {
+    it('accepts task with importance/difficulty but no exp (auto mode)', () => {
+      const result = EditTaskSchema.parse({
+        id: 1,
+        importance: 4,
+        difficulty: 3,
+      });
+      expect(result.exp).toBeUndefined();
+      expect(result.importance).toBe(4);
+      expect(result.difficulty).toBe(3);
+    });
+
+    it('accepts task with only importance (auto mode)', () => {
+      const result = EditTaskSchema.parse({
+        id: 1,
+        importance: 3,
+      });
+      expect(result.importance).toBe(3);
+      expect(result.difficulty).toBeUndefined();
+    });
+
+    it('accepts task with only difficulty (auto mode)', () => {
+      const result = EditTaskSchema.parse({
+        id: 1,
+        difficulty: 2,
+      });
+      expect(result.difficulty).toBe(2);
+      expect(result.importance).toBeUndefined();
+    });
+
+    it('rejects importance below 1', () => {
+      expect(() => EditTaskSchema.parse({ id: 1, importance: 0 }))
+        .toThrow('Importance must be between 1 and 4');
+    });
+
+    it('rejects importance above 4', () => {
+      expect(() => EditTaskSchema.parse({ id: 1, importance: 5 }))
+        .toThrow('Importance must be between 1 and 4');
+    });
+
+    it('rejects difficulty below 1', () => {
+      expect(() => EditTaskSchema.parse({ id: 1, difficulty: 0 }))
+        .toThrow('Difficulty must be between 1 and 4');
+    });
+
+    it('rejects difficulty above 4', () => {
+      expect(() => EditTaskSchema.parse({ id: 1, difficulty: 5 }))
+        .toThrow('Difficulty must be between 1 and 4');
+    });
+
+    it('still requires skills when exp is explicitly set (even with importance/difficulty)', () => {
+      expect(() => EditTaskSchema.parse({
+        id: 1,
+        exp: 50,
+        importance: 3,
+        difficulty: 3,
+      })).toThrow('When exp is specified, skills must be provided as a non-empty array');
+    });
+
+    it('accepts exp + skills with importance/difficulty (explicit XP takes precedence)', () => {
+      const result = EditTaskSchema.parse({
+        id: 1,
+        exp: 100,
+        skills: [1],
+        importance: 3,
+        difficulty: 3,
+      });
+      expect(result.exp).toBe(100);
+      expect(result.skills).toEqual([1]);
+      expect(result.importance).toBe(3);
+    });
+  });
+
+  describe('count task validation (task_type and target_times)', () => {
+    it('accepts count task update with valid task_type and target_times', () => {
+      const result = EditTaskSchema.parse({
+        id: 1,
+        task_type: 1,
+        target_times: 10,
+      });
+      expect(result.task_type).toBe(1);
+      expect(result.target_times).toBe(10);
+    });
+
+    it('accepts count task with is_affect_shop_reward', () => {
+      const result = EditTaskSchema.parse({
+        id: 1,
+        task_type: 1,
+        target_times: 3,
+        is_affect_shop_reward: false,
+      });
+      expect(result.is_affect_shop_reward).toBe(false);
+    });
+
+    it('rejects count task (task_type=1) without target_times', () => {
+      expect(() => EditTaskSchema.parse({
+        id: 1,
+        task_type: 1,
+      })).toThrow('When task_type is 1 (count task), target_times must be provided and must be positive');
+    });
+
+    it('rejects count task with zero target_times', () => {
+      expect(() => EditTaskSchema.parse({
+        id: 1,
+        task_type: 1,
+        target_times: 0,
+      })).toThrow('Target times must be positive');
+    });
+
+    it('rejects count task with negative target_times', () => {
+      expect(() => EditTaskSchema.parse({
+        id: 1,
+        task_type: 1,
+        target_times: -3,
+      })).toThrow('Target times must be positive');
+    });
+
+    it('accepts converting task to normal type (task_type=0)', () => {
+      const result = EditTaskSchema.parse({
+        id: 1,
+        task_type: 0,
+      });
+      expect(result.task_type).toBe(0);
+    });
+
+    it('accepts task_type update without target_times for non-count tasks', () => {
+      const result = EditTaskSchema.parse({
+        id: 1,
+        task_type: 2,
+      });
+      expect(result.task_type).toBe(2);
+      expect(result.target_times).toBeUndefined();
+    });
+
+    it('rejects task_type outside valid range', () => {
+      expect(() => EditTaskSchema.parse({
+        id: 1,
+        task_type: 5,
+      })).toThrow('Task type must be 0-3');
+    });
+
+    it('accepts updating target_times alone (for existing count task)', () => {
+      const result = EditTaskSchema.parse({
+        id: 1,
+        target_times: 15,
+      });
+      expect(result.target_times).toBe(15);
     });
   });
 });

@@ -8,6 +8,7 @@ import {
   CreateTaskSchema,
   SearchTasksSchema,
   TaskHistorySchema,
+  DeleteTaskSchema,
   type CreateTaskInput,
   type SearchTasksInput,
   type TaskHistoryInput,
@@ -179,7 +180,7 @@ export class TaskTools {
       let result = `## Task History\n\n`;
       result += `Showing ${history.length} completed tasks\n\n`;
 
-      history.forEach((record: any) => {
+      history.forEach((record) => {
         const date = new Date(record.completedTime || record.time || 0).toLocaleString();
         result += `- **${record.taskName || 'Unknown'}** (${date})\n`;
         if (record.exp) result += `  +${record.exp} XP\n`;
@@ -214,6 +215,28 @@ export class TaskTools {
       return result;
     } catch (error) {
       return handleToolError(error, 'fetching task categories');
+    }
+  }
+
+  /**
+   * Delete a task by ID
+   */
+  static async deleteTask(input: unknown): Promise<string> {
+    try {
+      const validated = DeleteTaskSchema.parse(input);
+      configManager.logIfDebug('Deleting task:', validated);
+
+      await ensureServerHealthy();
+
+      const response = await lifeupClient.deleteTask(validated);
+
+      return (
+        `✓ Task deleted successfully!\n\n` +
+        `**Task ID**: ${validated.id}\n` +
+        `**Note**: This action is permanent and cannot be undone.`
+      );
+    } catch (error) {
+      return handleToolError(error, 'deleting task');
     }
   }
 }

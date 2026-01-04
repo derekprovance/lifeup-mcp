@@ -40,7 +40,7 @@ LifeUp Cloud API (Android Device)
 - Health check capability for connectivity verification
 
 **tools/task-tools.ts** - Task management operations
-- 5 exported static methods: `createTask`, `listAllTasks`, `searchTasks`, `getTaskHistory`, `getTaskCategories`
+- 6 exported static methods: `createTask`, `listAllTasks`, `searchTasks`, `getTaskHistory`, `getTaskCategories`, `deleteTask`
 - All return formatted markdown strings for Claude
 - Calls `lifeupClient` methods and wraps results in error handling
 
@@ -49,7 +49,7 @@ LifeUp Cloud API (Android Device)
 - `listAchievementCategories` - Lists all achievement categories with IDs and descriptions
 - `matchTaskToAchievements` - Keyword-based matching algorithm to suggest relevant achievements for a task
 - `createAchievement` - Create new custom achievements with optional unlock conditions and rewards
-- `updateAchievement` - Modify existing achievement properties (name, description, rewards, unlock status). When updating conditions_json, the achievement is automatically deleted and recreated with new conditions to ensure they are properly applied.
+- `updateAchievement` - Modify existing achievement properties (name, description, rewards, unlock status). ⚠️ IMPORTANT: The LifeUp API does not support updating conditions_json. To change unlock conditions, you must delete the achievement and create a new one.
 - `deleteAchievement` - Delete achievement definitions permanently
 
 **tools/user-info-tools.ts** - User profile and character information
@@ -105,17 +105,38 @@ The server supports "safe mutations" - create/update/delete operations that requ
 1. **Task Management:**
    - `create_task` - Creates tasks that must be manually completed in the app
    - `edit_task` - Edit existing task properties (name, rewards, deadline, category, appearance). Supports absolute/relative value adjustments via exp_set_type and coin_set_type parameters.
+   - `delete_task` - Permanently delete a task by its ID. ⚠️ This action cannot be undone. Blocked in SAFE_MODE. Requires explicit task ID to prevent accidental deletions.
 
-   **XP Parameter:**
+   **XP Parameter (Explicit vs Auto Mode):**
    - `exp` is optional. When specified, you must provide the `skillIds` (create_task) or `skills` (edit_task) array to indicate which attributes should receive the XP.
-   - When omitted, the task's XP value remains unchanged from its current value.
-   - Example: `create_task(name: "Learn Rust", exp: 50, skillIds: [1, 2])` - Sets XP to 50 and applies to attributes 1 and 2
-   - Example: `edit_task(id: 1, exp: 75, skills: [1, 2])` - Updates XP to 75 and applies to attributes 1 and 2
+   - **Auto Mode**: When `exp` is omitted AND both `importance` and `difficulty` are provided (1-4), LifeUp automatically calculates XP based on task difficulty and importance.
+   - When omitted without `importance`/`difficulty`:
+     - For `create_task`: XP defaults to 0
+     - For `edit_task`: Task's existing XP value remains unchanged
+   - Examples:
+     - `create_task(name: "Learn Rust", exp: 50, skillIds: [1, 2])` - Explicit: Sets XP to 50, applies to attributes 1 and 2
+     - `create_task(name: "Learn Rust", importance: 4, difficulty: 4)` - Auto: LifeUp auto-calculates XP based on difficulty/importance
+     - `edit_task(id: 1, exp: 75, skills: [1, 2])` - Explicit: Updates XP to 75, applies to attributes 1 and 2
+     - `edit_task(id: 1, importance: 3, difficulty: 3)` - Auto: Updates to auto-calculated XP based on difficulty/importance
 
    **Auto Use Items:**
    - Both `create_task` and `edit_task` support `auto_use_item` parameter (boolean, defaults to false)
    - When true, item rewards are automatically consumed/used when the task is completed
    - Example: `edit_task(id: 1, auto_use_item: true)` - Items will auto-consume on task completion
+
+   **Count Tasks (Task Types):**
+   - Both `create_task` and `edit_task` support `task_type` parameter (0-3, requires LifeUp v1.99.1+)
+   - Task types:
+     - 0 = Normal task (default) - Standard single-completion task
+     - 1 = Count task - Can be completed multiple times with a target count
+     - 2 = Negative task - Tasks that penalize when completed
+     - 3 = API task - Special API-controlled tasks
+   - `target_times` (number > 0): Required for count tasks (task_type=1). Specifies how many times the task must be completed.
+   - `is_affect_shop_reward` (boolean, defaults to false): For count tasks, determines whether the count affects shop item reward calculations.
+   - Examples:
+     - `create_task(name: "Exercise", task_type: 1, target_times: 5)` - Count task: Exercise 5 times
+     - `create_task(name: "Read 30min", task_type: 1, target_times: 7, is_affect_shop_reward: true)` - Count task with shop reward scaling
+     - `edit_task(id: 1, task_type: 1, target_times: 10)` - Convert existing task to count task with target of 10
 
 2. **Achievement Management:**
    - `create_achievement` - Create new achievements without unlocking them (locked by default)
@@ -131,7 +152,7 @@ The server supports "safe mutations" - create/update/delete operations that requ
    - `edit_skill` - Create, update, or delete skills; adjust skill experience
 
 **Prohibited Operations:**
-- Task completion/deletion (requires manual action in app)
+- Task completion (requires manual action in app)
 - Shop purchases (requires manual action in app)
 - Achievement unlocking (achievements are created locked by default)
 - Reward grants (use create_task with rewards or apply_penalty instead)
@@ -254,11 +275,11 @@ To improve: modify keyword extraction or confidence calculation logic.
 
 ### Environment Variables (.env)
 
-- **LIFEUP_HOST** - IP address of Android device running LifeUp (default: 10.103.2.235)
+- **LIFEUP_HOST** - IP address of Android device running LifeUp (e.g., 192.168.1.100)
 - **LIFEUP_PORT** - HTTP API port (default: 13276)
 - **LIFEUP_API_TOKEN** - Optional authentication token (leave empty if not configured)
 - **DEBUG** - Enable debug logging (default: false, set to "true" for logs)
-- **SAFE_MODE** - When true, disables edit and delete mutation tools (default: false). Create operations (create_task, create_achievement, add_shop_item) remain available. Only edit/delete operations (edit_task, update_achievement, delete_achievement, edit_shop_item, apply_penalty, edit_skill) are blocked.
+- **SAFE_MODE** - When true, disables edit and delete mutation tools (default: false). Create operations (create_task, create_achievement, add_shop_item) remain available. Only edit/delete operations (edit_task, delete_task, update_achievement, delete_achievement, edit_shop_item, apply_penalty, edit_skill) are blocked.
 
 ### Runtime Configuration
 

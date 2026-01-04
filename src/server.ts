@@ -26,6 +26,7 @@ const CREATE_TOOLS = [
 // Tools that modify or delete existing entities - blocked in SAFE_MODE
 const EDIT_DELETE_TOOLS = [
   'edit_task',
+  'delete_task',
   'update_achievement',
   'delete_achievement',
   'edit_shop_item',
@@ -125,6 +126,10 @@ class LifeUpServer {
 
             case 'get_task_categories':
               result = await TaskTools.getTaskCategories();
+              break;
+
+            case 'delete_task':
+              result = await TaskTools.deleteTask(request.params.arguments);
               break;
 
             case 'list_achievements':
@@ -240,6 +245,7 @@ class LifeUpServer {
         name: 'create_task',
         description:
           'Create a new task in LifeUp. Specify task name and optional rewards (experience points and coins). ' +
+          'XP can be set explicitly (with skillIds) or auto-calculated based on importance/difficulty levels. ' +
           'The task will be created as an active task in your LifeUp app. ' +
           'This tool will prompt you to confirm the server is running if it cannot connect.',
         inputSchema: {
@@ -251,7 +257,22 @@ class LifeUpServer {
             },
             exp: {
               type: 'number',
-              description: 'Experience points reward (optional, non-negative). If specified, must provide skillIds to indicate which attributes receive the XP. If omitted, XP remains unchanged from the task\'s current value.',
+              description: 'Experience points reward (optional, non-negative). If specified, must provide skillIds to indicate which attributes receive the XP. Omit this to use auto-calculation based on importance/difficulty.',
+            },
+            skillIds: {
+              type: 'array',
+              items: {
+                type: 'number',
+              },
+              description: 'Skill/attribute IDs to receive XP rewards. Required when setting exp parameter. Supports multiple values (e.g., [1, 2, 3]). For auto XP mode, omit this and use importance/difficulty instead.',
+            },
+            importance: {
+              type: 'number',
+              description: 'Task importance level (1-4). Used for auto XP calculation when exp is omitted. Higher values increase auto-calculated XP.',
+            },
+            difficulty: {
+              type: 'number',
+              description: 'Task difficulty level (1-4). Used for auto XP calculation when exp is omitted. Higher values increase auto-calculated XP.',
             },
             coin: {
               type: 'number',
@@ -265,13 +286,6 @@ class LifeUpServer {
               type: 'number',
               description: 'Deadline as timestamp in milliseconds (optional)',
             },
-            skillIds: {
-              type: 'array',
-              items: {
-                type: 'number',
-              },
-              description: 'Skill/attribute IDs to receive XP rewards. Required when setting exp parameter. Supports multiple values (e.g., [1, 2, 3]). Without skillIds, XP cannot be applied to any attributes.',
-            },
             content: {
               type: 'string',
               description: 'Task description/content (optional, max 1000 characters)',
@@ -279,6 +293,18 @@ class LifeUpServer {
             auto_use_item: {
               type: 'boolean',
               description: 'Automatically use/consume item rewards when task is completed (optional, defaults to false)',
+            },
+            task_type: {
+              type: 'number',
+              description: 'Task type: 0=normal (default), 1=count task, 2=negative task, 3=API task. Count tasks can be completed multiple times. Requires LifeUp v1.99.1+',
+            },
+            target_times: {
+              type: 'number',
+              description: 'Target count for count tasks (required when task_type=1, must be > 0). Example: Set to 5 to create a task that needs to be completed 5 times.',
+            },
+            is_affect_shop_reward: {
+              type: 'boolean',
+              description: 'Whether count affects shop item reward calculations (optional, only valid when task_type=1, defaults to false)',
             },
           },
           required: ['name'],
@@ -350,6 +376,23 @@ class LifeUpServer {
         },
       },
       {
+        name: 'delete_task',
+        description:
+          '⚠️ WARNING: Permanently delete a task by its ID. This action cannot be undone. ' +
+          'This tool is disabled in SAFE_MODE. Requires explicit task ID to prevent accidental deletions. ' +
+          'Use with caution.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'number',
+              description: 'Task ID to delete (required, must be a positive integer)',
+            },
+          },
+          required: ['id'],
+        },
+      },
+      {
         name: 'list_achievements',
         description:
           'List all available achievements in your LifeUp app. Shows both unlocked and locked achievements ' +
@@ -361,7 +404,7 @@ class LifeUpServer {
         },
       },
       {
-        name: 'match_task_to_achievements', //TODO - Test that this skill works properly
+        name: 'match_task_to_achievements',
         description:
           'Match a task to potentially relevant achievements based on task name and keywords. ' +
           'Helps identify which achievements could be earned by completing specific tasks. ' +
@@ -706,7 +749,7 @@ class LifeUpServer {
             },
             exp: {
               type: 'number',
-              description: 'Experience points reward (must be >= 0). Use exp_set_type to control whether value is absolute (replace) or relative (add/subtract). Required skillIds when setting this parameter.',
+              description: 'Experience points reward (must be >= 0). Use exp_set_type to control whether value is absolute (replace) or relative (add/subtract). Requires skills when setting. Omit to use auto-calculation based on importance/difficulty.',
             },
             exp_set_type: {
               type: 'string',
@@ -717,7 +760,7 @@ class LifeUpServer {
             skills: {
               type: 'array',
               items: { type: 'number' },
-              description: 'Skill/attribute IDs to receive XP rewards. Required when setting exp parameter. Supports multiple values (e.g., [1, 2, 3]). Without skills, XP cannot be applied.',
+              description: 'Skill/attribute IDs to receive XP rewards. Required when setting exp parameter. Supports multiple values (e.g., [1, 2, 3]). For auto XP mode, omit exp and use importance/difficulty instead.',
             },
             category: {
               type: 'number',
@@ -729,11 +772,11 @@ class LifeUpServer {
             },
             importance: {
               type: 'number',
-              description: 'Importance level (1-4)',
+              description: 'Importance level (1-4). Used for auto XP calculation when exp is omitted. Higher values increase auto-calculated XP.',
             },
             difficulty: {
               type: 'number',
-              description: 'Difficulty level (1-4)',
+              description: 'Difficulty level (1-4). Used for auto XP calculation when exp is omitted. Higher values increase auto-calculated XP.',
             },
             deadline: {
               type: 'number',
@@ -762,11 +805,23 @@ class LifeUpServer {
               type: 'boolean',
               description: 'Freeze status for repeating tasks',
             },
+            task_type: {
+              type: 'number',
+              description: 'Task type: 0=normal, 1=count task, 2=negative task, 3=API task. Set to 1 to convert task to count task.',
+            },
+            target_times: {
+              type: 'number',
+              description: 'Target count for count tasks (required when task_type=1, must be > 0)',
+            },
+            is_affect_shop_reward: {
+              type: 'boolean',
+              description: 'Whether count affects shop item reward calculations (only valid when task_type=1)',
+            },
           },
         },
       },
       {
-        name: 'add_shop_item', //TODO - Test that this skill works properly
+        name: 'add_shop_item',
         description:
           'Create a new shop item with price, stock, effects, and purchase limits. ' +
           'Items can have custom usage effects like coin rewards, exp bonuses, or special actions.',
@@ -840,7 +895,7 @@ class LifeUpServer {
         },
       },
       {
-        name: 'edit_shop_item', //TODO - Test that this skill works properly
+        name: 'edit_shop_item',
         description:
           'Modify an existing shop item. Can adjust price, stock, owned quantity, effects, and other properties. ' +
           'Supports both absolute setting and relative adjustments for numeric values.',
@@ -913,7 +968,7 @@ class LifeUpServer {
         },
       },
       {
-        name: 'apply_penalty', //TODO - Test that this skill works properly
+        name: 'apply_penalty',
         description:
           'Apply a penalty to the player (coins, experience points, or items) with a custom reason. ' +
           'The reason will be displayed in history pages. Use this to subtract resources directly.',
@@ -955,7 +1010,7 @@ class LifeUpServer {
         },
       },
       {
-        name: 'edit_skill', //TODO - Test that this skill works properly
+        name: 'edit_skill',
         description:
           'Create a new skill or edit an existing skill (name, icon, color, experience). ' +
           'Can also delete skills. Skills represent character attributes that can be leveled up.',

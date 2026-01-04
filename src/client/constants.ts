@@ -29,6 +29,8 @@ export const LIFEUP_URL_SCHEMES = {
   TASK_CREATE: 'lifeup://api/add_task',
   // Task editing format: lifeup://api/edit_task?id=...&todo=...
   TASK_EDIT: 'lifeup://api/edit_task',
+  // Task deletion format: lifeup://api/delete_task?id=...
+  TASK_DELETE: 'lifeup://api/delete_task',
   // Reward format: lifeup://api/reward?type=coin&content=...&number=...
   REWARD: 'lifeup://api/reward',
   // Achievement creation/update/delete format: lifeup://api/achievement?name=...&category_id=...
@@ -46,6 +48,14 @@ export const TASK_STATUS = {
   ACTIVE: 0,
   COMPLETED: 1,
   ARCHIVED: 2,
+} as const;
+
+// Task types (requires LifeUp v1.99.1+)
+export const TASK_TYPE = {
+  NORMAL: 0,
+  COUNT: 1,
+  NEGATIVE: 2,
+  API: 3,
 } as const;
 
 // Response codes

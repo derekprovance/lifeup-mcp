@@ -10,7 +10,7 @@ export const CreateTaskSchema = z.object({
     .min(1, 'Task name cannot be empty')
     .max(200, 'Task name cannot exceed 200 characters'),
   // XP is an optional field. When set, requires skillIds to specify which attributes receive the XP.
-  // When omitted, the task's XP remains unchanged from its current value.
+  // When omitted with importance/difficulty, LifeUp auto-calculates XP based on task difficulty and importance.
   exp: z.number().nonnegative('Experience points must be non-negative').optional(),
   coin: z.number().nonnegative('Coin reward must be non-negative').optional(),
   coinVar: z.number().nonnegative('Coin variance must be non-negative').optional(),
@@ -22,6 +22,11 @@ export const CreateTaskSchema = z.object({
     .optional(),
   content: z.string().max(1000, 'Task content cannot exceed 1000 characters').optional(),
   auto_use_item: z.boolean().optional(),
+  importance: z.number().int().min(1, 'Importance must be between 1 and 4').max(4, 'Importance must be between 1 and 4').optional(),
+  difficulty: z.number().int().min(1, 'Difficulty must be between 1 and 4').max(4, 'Difficulty must be between 1 and 4').optional(),
+  task_type: z.number().int().min(0, 'Task type must be 0-3').max(3, 'Task type must be 0-3').optional(),
+  target_times: z.number().int().positive('Target times must be positive').optional(),
+  is_affect_shop_reward: z.boolean().optional(),
 }).refine(
   (data) => {
     if (data.exp !== undefined) {
@@ -30,8 +35,20 @@ export const CreateTaskSchema = z.object({
     return true;
   },
   {
-    message: 'When exp is specified, skillIds must be provided as a non-empty array. Without skillIds, XP cannot be applied to any attributes.',
+    message: 'When exp is specified, skillIds must be provided as a non-empty array. To use auto XP calculation, omit exp and set importance/difficulty instead.',
     path: ['skillIds'],
+  }
+).refine(
+  (data) => {
+    // When task_type is 1 (count task), target_times must be provided and positive
+    if (data.task_type === 1) {
+      return data.target_times !== undefined && data.target_times > 0;
+    }
+    return true;
+  },
+  {
+    message: 'When task_type is 1 (count task), target_times must be provided and must be positive',
+    path: ['target_times'],
   }
 );
 
@@ -115,7 +132,9 @@ export const UpdateAchievementSchema = z.object({
   name: z.string().min(1).max(100, 'Name cannot exceed 100 characters').optional(),
   category_id: z.number().int().positive('Category ID must be positive').optional(),
   desc: z.string().max(500, 'Description cannot exceed 500 characters').optional(),
-  conditions_json: z.array(AchievementConditionSchema).optional(),
+  // NOTE: conditions_json is intentionally NOT included here
+  // The LifeUp API does not support updating unlock conditions
+  // To change conditions, delete and recreate the achievement instead
   exp: z.number().int().min(0, 'Experience must be non-negative').optional(),
   coin: z.number().int().min(0).max(999999, 'Coin must be 0-999999').optional(),
   coin_var: z.number().int().min(0, 'Coin variation must be non-negative').optional(),
@@ -160,8 +179,8 @@ export const EditTaskSchema = z.object({
   skills: z.array(z.number().int().positive('Skill IDs must be positive')).optional(),
   category: z.number().int().min(0, 'Category must be non-negative').optional(),
   frequency: z.number().int().optional(),
-  importance: z.number().int().min(1).max(4, 'Importance must be 1-4').optional(),
-  difficulty: z.number().int().min(1).max(4, 'Difficulty must be 1-4').optional(),
+  importance: z.number().int().min(1, 'Importance must be between 1 and 4').max(4, 'Importance must be between 1 and 4').optional(),
+  difficulty: z.number().int().min(1, 'Difficulty must be between 1 and 4').max(4, 'Difficulty must be between 1 and 4').optional(),
   deadline: z.number().int().positive('Deadline must be valid timestamp').optional(),
   remind_time: z.number().int().positive('Remind time must be valid timestamp').optional(),
   start_time: z.number().int().positive('Start time must be valid timestamp').optional(),
@@ -176,6 +195,9 @@ export const EditTaskSchema = z.object({
   items: z.array(ItemRewardSchema).optional(),
   auto_use_item: z.boolean().optional(),
   frozen: z.boolean().optional(),
+  task_type: z.number().int().min(0, 'Task type must be 0-3').max(3, 'Task type must be 0-3').optional(),
+  target_times: z.number().int().positive('Target times must be positive').optional(),
+  is_affect_shop_reward: z.boolean().optional(),
 }).refine(
   (data) => data.id !== undefined || data.gid !== undefined || data.name !== undefined,
   { message: 'At least one of id, gid, or name must be provided' }
@@ -187,10 +209,27 @@ export const EditTaskSchema = z.object({
     return true;
   },
   {
-    message: 'When exp is specified, skills must be provided as a non-empty array. Without skills, XP cannot be applied to any attributes.',
+    message: 'When exp is specified, skills must be provided as a non-empty array. To use auto XP calculation, omit exp and set importance/difficulty instead.',
     path: ['skills'],
   }
+).refine(
+  (data) => {
+    // When task_type is 1 (count task), target_times must be provided and positive
+    if (data.task_type === 1) {
+      return data.target_times !== undefined && data.target_times > 0;
+    }
+    return true;
+  },
+  {
+    message: 'When task_type is 1 (count task), target_times must be provided and must be positive',
+    path: ['target_times'],
+  }
 );
+
+// Delete Task Schema
+export const DeleteTaskSchema = z.object({
+  id: z.number().int().positive('Task ID must be positive'),
+});
 
 // Item Effect Schema
 export const ItemEffectSchema = z.object({

@@ -38,6 +38,13 @@ export interface Task {
   order: number;
 }
 
+export interface CoinInfo {
+  coin?: number;
+  balance?: number;
+  atm?: number;
+  [key: string]: number | undefined;
+}
+
 export interface SubTask {
   id: number;
   gid: number;
@@ -122,12 +129,14 @@ export interface LifeUpInfo {
 }
 
 export interface TaskHistoryRecord {
-  id: number;
-  taskId: number;
-  taskName: string;
-  completedTime: number;
+  id?: number;
+  taskId?: number;
+  taskName?: string;
+  completedTime?: number;
+  time?: number;
   exp: number;
   coin: number;
+  coin_var?: number;
   [key: string]: any;
 }
 
@@ -141,6 +150,11 @@ export interface CreateTaskRequest {
   skillIds?: number[];
   content?: string;
   auto_use_item?: boolean;
+  importance?: number; // 1-4, used for auto XP calculation when exp is omitted
+  difficulty?: number; // 1-4, used for auto XP calculation when exp is omitted
+  task_type?: number; // 0=normal, 1=count, 2=negative, 3=API (requires LifeUp v1.99.1+)
+  target_times?: number; // Target count for count tasks (required when task_type=1)
+  is_affect_shop_reward?: boolean; // Whether count affects shop reward calculation (only valid when task_type=1)
 }
 
 export interface TaskMatchResult {
@@ -217,8 +231,8 @@ export interface EditTaskRequest {
   skills?: number[];
   category?: number;
   frequency?: number;
-  importance?: number;
-  difficulty?: number;
+  importance?: number; // 1-4, used for auto XP calculation when exp is omitted
+  difficulty?: number; // 1-4, used for auto XP calculation when exp is omitted
   deadline?: number;
   remind_time?: number;
   start_time?: number;
@@ -233,6 +247,14 @@ export interface EditTaskRequest {
   items?: ItemReward[];
   auto_use_item?: boolean;
   frozen?: boolean;
+  task_type?: number; // 0=normal, 1=count, 2=negative, 3=API
+  target_times?: number; // Target count for count tasks (required when task_type=1)
+  is_affect_shop_reward?: boolean; // Whether count affects shop reward calculation (only valid when task_type=1)
+}
+
+// Delete Task
+export interface DeleteTaskRequest {
+  id: number;
 }
 
 // Shop Item Common
