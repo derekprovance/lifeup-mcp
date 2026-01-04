@@ -8,14 +8,167 @@ import {
   CreateTaskSchema,
   SearchTasksSchema,
   TaskHistorySchema,
+  GetTaskDetailsSchema,
   DeleteTaskSchema,
   type CreateTaskInput,
   type SearchTasksInput,
   type TaskHistoryInput,
+  type GetTaskDetailsInput,
 } from '../config/validation.js';
 import * as Types from '../client/types.js';
 import { TASK_STATUS } from '../client/constants.js';
 import { ensureServerHealthy, handleToolError } from './tool-helpers.js';
+
+/**
+ * Format frequency enum to human-readable string
+ */
+function formatFrequency(frequency: number): string {
+  if (frequency === 0) return 'Once';
+  if (frequency === 1) return 'Daily';
+  if (frequency > 1) return `Every ${frequency} days`;
+  if (frequency === -1) return 'Unlimited';
+  if (frequency === -3) return 'Ebbinghaus';
+  if (frequency === -4) return 'Monthly';
+  if (frequency === -5) return 'Yearly';
+  return `Unknown (${frequency})`;
+}
+
+/**
+ * Format timestamp to human-readable date string
+ */
+function formatTimestamp(timestamp: number | null | undefined, label: string): string {
+  if (!timestamp) return '';
+  return `  **${label}**: ${new Date(timestamp).toLocaleString()}\n`;
+}
+
+/**
+ * Format subtasks with completion status
+ */
+function formatSubTasks(subTasks: Types.SubTask[]): string {
+  if (!subTasks || subTasks.length === 0) return '';
+
+  const completed = subTasks.filter((st) => st.status === 1).length;
+  let result = `  **Subtasks**: ${completed}/${subTasks.length} complete\n`;
+
+  subTasks.forEach((subtask) => {
+    const checkbox = subtask.status === 1 ? '✓' : ' ';
+    result += `    [${checkbox}] ${subtask.todo} (ID: ${subtask.id})`;
+
+    // Show subtask rewards if they exist
+    if (subtask.exp || subtask.coin) {
+      result += ` - Rewards: ${subtask.exp || 0}XP, ${subtask.coin || 0} coin`;
+    }
+    result += '\n';
+  });
+
+  return result;
+}
+
+/**
+ * Format skills and item rewards
+ */
+function formatSkillsAndItems(skillIds: number[], items: any[]): string {
+  let result = '';
+
+  if (skillIds && skillIds.length > 0) {
+    result += `  **Skills**: ${skillIds.join(', ')}\n`;
+  }
+
+  if (items && items.length > 0) {
+    result += `  **Item Rewards**: ${items.length} item(s)\n`;
+    items.forEach((item: any, index: number) => {
+      if (item.item_id !== undefined && item.amount !== undefined) {
+        result += `    - Item ${item.item_id} x${item.amount}\n`;
+      } else if (item.itemId !== undefined && item.amount !== undefined) {
+        // API might use itemId instead of item_id
+        result += `    - Item ${item.itemId} x${item.amount}\n`;
+      } else {
+        result += `    - Item ${index + 1}\n`;
+      }
+    });
+  }
+
+  return result;
+}
+
+/**
+ * Format comprehensive task details for display
+ */
+function formatTaskDetails(task: Types.Task, includeStatus: boolean = true): string {
+  let result = '';
+
+  // Basic info with status indicator
+  const statusIndicator = includeStatus
+    ? (task.status === TASK_STATUS.ACTIVE ? '○' : '✓') + ' '
+    : '';
+  result += `${statusIndicator}**${task.name}** (ID: ${task.id})\n`;
+
+  // Description
+  if (task.content) {
+    result += `  ${task.content}\n`;
+  }
+
+  // Rewards
+  if (task.exp || task.coin) {
+    result += `  **Rewards**: ${task.exp || 0}XP, ${task.coin || 0} coin`;
+    if (task.coinVariable) {
+      result += ` (+/- ${task.coinVariable})`;
+    }
+    result += '\n';
+  }
+
+  // Skills and Items
+  result += formatSkillsAndItems(task.skillIds, task.items);
+
+  // Subtasks
+  result += formatSubTasks(task.subTasks);
+
+  // Timing information
+  result += formatTimestamp(task.deadline || task.due_date, 'Deadline');
+  result += formatTimestamp(task.remindTime, 'Reminder');
+  result += formatTimestamp(task.created_time, 'Created');
+  result += formatTimestamp(task.update_time, 'Updated');
+
+  // Recurring task info
+  if (task.frequency !== 0) {
+    result += `  **Frequency**: ${formatFrequency(task.frequency)}\n`;
+  }
+  if (task.gid && task.frequency !== 0) {
+    result += `  **Recurring Group ID**: ${task.gid}\n`;
+  }
+
+  return result;
+}
+
+/**
+ * Format minimal task summary for list views (no description, no detailed fields)
+ * Only shows: name, ID, status, deadline (if set), and rewards
+ */
+function formatTaskSummary(task: Types.Task, includeStatus: boolean = true): string {
+  let result = '';
+
+  // Basic info with status indicator
+  const statusIndicator = includeStatus
+    ? (task.status === TASK_STATUS.ACTIVE ? '○' : '✓') + ' '
+    : '';
+  result += `${statusIndicator}**${task.name}** (ID: ${task.id})`;
+
+  // Rewards on same line
+  if (task.exp || task.coin) {
+    result += ` - ${task.exp || 0}XP, ${task.coin || 0} coin`;
+    if (task.coinVariable) {
+      result += ` (+/- ${task.coinVariable})`;
+    }
+  }
+  result += '\n';
+
+  // Deadline if set (only timing info shown in summary)
+  if (task.deadline || task.due_date) {
+    result += `  **Deadline**: ${new Date(task.deadline || task.due_date!).toLocaleString()}\n`;
+  }
+
+  return result;
+}
 
 export class TaskTools {
   /**
@@ -71,13 +224,9 @@ export class TaskTools {
       result += `**Active**: ${active.length} | **Completed**: ${completed.length}\n\n`;
 
       if (active.length > 0) {
-        result += `### Active Tasks\n`;
+        result += `### Active Tasks\n\n`;
         active.slice(0, 20).forEach((task) => {
-          result += `- **${task.name}** (ID: ${task.id})\n`;
-          if (task.content) result += `  ${task.content}\n`;
-          if (task.exp || task.coin) {
-            result += `  Rewards: ${task.exp || 0}XP, ${task.coin || 0} coin\n`;
-          }
+          result += formatTaskSummary(task, false);
         });
         if (active.length > 20) {
           result += `... and ${active.length - 20} more active tasks\n`;
@@ -85,9 +234,9 @@ export class TaskTools {
       }
 
       if (completed.length > 0 && completed.length <= 10) {
-        result += `\n### Recently Completed (showing ${completed.length})\n`;
+        result += `\n### Recently Completed (showing ${completed.length})\n\n`;
         completed.forEach((task) => {
-          result += `- ~~${task.name}~~ (completed at ${new Date(task.endTime || 0).toLocaleDateString()})\n`;
+          result += formatTaskSummary(task, false);
         });
       }
 
@@ -143,16 +292,11 @@ export class TaskTools {
 
       let result = `## Search Results (${tasks.length} found)\n\n`;
       tasks.slice(0, 20).forEach((task) => {
-        const status = task.status === TASK_STATUS.ACTIVE ? '○' : '✓';
-        result += `${status} **${task.name}** (ID: ${task.id})\n`;
-        if (task.content) result += `   ${task.content}\n`;
-        if (task.exp || task.coin) {
-          result += `   Rewards: ${task.exp || 0}XP, ${task.coin || 0} coin\n`;
-        }
+        result += formatTaskSummary(task, true);
       });
 
       if (tasks.length > 20) {
-        result += `\n... and ${tasks.length - 20} more results`;
+        result += `... and ${tasks.length - 20} more results`;
       }
 
       return result;
@@ -237,6 +381,33 @@ export class TaskTools {
       );
     } catch (error) {
       return handleToolError(error, 'deleting task');
+    }
+  }
+
+  /**
+   * Get detailed information for a specific task by ID
+   */
+  static async getTaskDetails(input: unknown): Promise<string> {
+    try {
+      const validated = GetTaskDetailsSchema.parse(input);
+      configManager.logIfDebug('Getting task details:', validated);
+
+      await ensureServerHealthy();
+
+      // Fetch all tasks and find the requested one
+      const tasks = await lifeupClient.getAllTasks();
+      const task = tasks.find(t => t.id === validated.id);
+
+      if (!task) {
+        return `Task with ID ${validated.id} not found. Use list_all_tasks or search_tasks to find available task IDs.`;
+      }
+
+      let result = `## Task Details\n\n`;
+      result += formatTaskDetails(task, true);
+
+      return result;
+    } catch (error) {
+      return handleToolError(error, 'fetching task details');
     }
   }
 }

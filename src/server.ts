@@ -128,6 +128,10 @@ class LifeUpServer {
               result = await TaskTools.getTaskCategories();
               break;
 
+            case 'get_task_details':
+              result = await TaskTools.getTaskDetails(request.params.arguments);
+              break;
+
             case 'delete_task':
               result = await TaskTools.deleteTask(request.params.arguments);
               break;
@@ -373,6 +377,24 @@ class LifeUpServer {
         inputSchema: {
           type: 'object',
           properties: {},
+        },
+      },
+      {
+        name: 'get_task_details',
+        description:
+          'Get comprehensive details for a specific task by ID. Shows all task information including ' +
+          'subtasks, skills, item rewards, timing information (deadlines, created/updated times), ' +
+          'recurring task frequency, and full description. Use this to drill down into a specific task ' +
+          'after finding it with list_all_tasks or search_tasks.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'number',
+              description: 'Task ID to get details for (required)',
+            },
+          },
+          required: ['id'],
         },
       },
       {

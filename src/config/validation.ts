@@ -72,6 +72,10 @@ export const TaskHistorySchema = z.object({
     .default(100),
 });
 
+export const GetTaskDetailsSchema = z.object({
+  id: z.number().int().positive('Task ID must be positive'),
+});
+
 export const AchievementMatchSchema = z.object({
   taskName: z.string().min(1, 'Task name is required'),
   categoryId: z.number().positive('Category ID must be positive').optional(),
@@ -336,6 +340,7 @@ export const EditSkillSchema = z.object({
 export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;
 export type SearchTasksInput = z.infer<typeof SearchTasksSchema>;
 export type TaskHistoryInput = z.infer<typeof TaskHistorySchema>;
+export type GetTaskDetailsInput = z.infer<typeof GetTaskDetailsSchema>;
 export type AchievementMatchInput = z.infer<typeof AchievementMatchSchema>;
 export type SearchShopItemsInput = z.infer<typeof SearchShopItemsSchema>;
 export type CreateAchievementInput = z.infer<typeof CreateAchievementSchema>;
