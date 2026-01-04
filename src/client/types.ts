@@ -140,6 +140,7 @@ export interface CreateTaskRequest {
   deadline?: number;
   skillIds?: number[];
   content?: string;
+  auto_use_item?: boolean;
 }
 
 export interface TaskMatchResult {
@@ -211,6 +212,8 @@ export interface EditTaskRequest {
   coin?: number;
   coin_var?: number;
   exp?: number;
+  exp_set_type?: 'absolute' | 'relative';
+  coin_set_type?: 'absolute' | 'relative';
   skills?: number[];
   category?: number;
   frequency?: number;

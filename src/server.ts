@@ -251,7 +251,7 @@ class LifeUpServer {
             },
             exp: {
               type: 'number',
-              description: 'Experience points reward (optional, non-negative)',
+              description: 'Experience points reward (optional, non-negative). If specified, must provide skillIds to indicate which attributes receive the XP. If omitted, XP remains unchanged from the task\'s current value.',
             },
             coin: {
               type: 'number',
@@ -270,11 +270,15 @@ class LifeUpServer {
               items: {
                 type: 'number',
               },
-              description: 'Associated skill IDs (optional)',
+              description: 'Skill/attribute IDs to receive XP rewards. Required when setting exp parameter. Supports multiple values (e.g., [1, 2, 3]). Without skillIds, XP cannot be applied to any attributes.',
             },
             content: {
               type: 'string',
               description: 'Task description/content (optional, max 1000 characters)',
+            },
+            auto_use_item: {
+              type: 'boolean',
+              description: 'Automatically use/consume item rewards when task is completed (optional, defaults to false)',
             },
           },
           required: ['name'],
@@ -501,7 +505,7 @@ class LifeUpServer {
             },
             exp: {
               type: 'number',
-              description: 'Experience points reward (optional)',
+              description: 'Experience points reward (optional). IMPORTANT: Must specify skills array to apply XP to attributes.',
             },
             coin: {
               type: 'number',
@@ -514,7 +518,7 @@ class LifeUpServer {
             skills: {
               type: 'array',
               items: { type: 'number' },
-              description: 'Skill IDs to reward (optional)',
+              description: 'Skill/attribute IDs to receive XP rewards. Required when setting exp parameter. Without skills, XP cannot be applied.',
             },
             items: {
               type: 'array',
@@ -592,7 +596,7 @@ class LifeUpServer {
             },
             exp: {
               type: 'number',
-              description: 'Experience reward (optional)',
+              description: 'Experience reward (optional). IMPORTANT: Must specify skills array to apply XP to attributes.',
             },
             coin: {
               type: 'number',
@@ -611,7 +615,7 @@ class LifeUpServer {
             skills: {
               type: 'array',
               items: { type: 'number' },
-              description: 'New skill rewards (optional, replaces existing)',
+              description: 'Skill/attribute IDs to receive XP rewards. Required when setting exp parameter (replaces existing). Without skills, XP cannot be applied.',
             },
             items: {
               type: 'array',
@@ -661,7 +665,8 @@ class LifeUpServer {
         name: 'edit_task',
         description:
           'Edit properties of an existing task. Requires at least one identifier (id, gid, or name). ' +
-          'Can modify task content, rewards, deadline, category, appearance, and more.',
+          'Can modify task content, rewards, deadline, category, appearance, and more. ' +
+          'Use exp_set_type and coin_set_type for absolute/relative value adjustments.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -687,20 +692,32 @@ class LifeUpServer {
             },
             coin: {
               type: 'number',
-              description: 'Coin reward upon completion',
+              description: 'Coin reward upon completion. Use coin_set_type to control whether value is absolute or relative.',
             },
             coin_var: {
               type: 'number',
               description: 'Coin variance for random rewards',
             },
+            coin_set_type: {
+              type: 'string',
+              enum: ['absolute', 'relative'],
+              description: 'How to set coin value: absolute (replace current value) or relative (add/subtract from current value). ' +
+                           'Default is absolute.',
+            },
             exp: {
               type: 'number',
-              description: 'Experience points reward',
+              description: 'Experience points reward (must be >= 0). Use exp_set_type to control whether value is absolute (replace) or relative (add/subtract). Required skillIds when setting this parameter.',
+            },
+            exp_set_type: {
+              type: 'string',
+              enum: ['absolute', 'relative'],
+              description: 'How to set exp value: absolute (replace current value) or relative (add/subtract from current value). ' +
+                           'Default is absolute.',
             },
             skills: {
               type: 'array',
               items: { type: 'number' },
-              description: 'Skill IDs for rewards',
+              description: 'Skill/attribute IDs to receive XP rewards. Required when setting exp parameter. Supports multiple values (e.g., [1, 2, 3]). Without skills, XP cannot be applied.',
             },
             category: {
               type: 'number',
@@ -736,6 +753,10 @@ class LifeUpServer {
                   amount: { type: 'number' },
                 },
               },
+            },
+            auto_use_item: {
+              type: 'boolean',
+              description: 'Automatically use/consume item rewards when task is completed',
             },
             frozen: {
               type: 'boolean',

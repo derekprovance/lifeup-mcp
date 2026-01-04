@@ -9,6 +9,8 @@ export const CreateTaskSchema = z.object({
     .string()
     .min(1, 'Task name cannot be empty')
     .max(200, 'Task name cannot exceed 200 characters'),
+  // XP is an optional field. When set, requires skillIds to specify which attributes receive the XP.
+  // When omitted, the task's XP remains unchanged from its current value.
   exp: z.number().nonnegative('Experience points must be non-negative').optional(),
   coin: z.number().nonnegative('Coin reward must be non-negative').optional(),
   coinVar: z.number().nonnegative('Coin variance must be non-negative').optional(),
@@ -19,7 +21,19 @@ export const CreateTaskSchema = z.object({
     .max(20, 'Cannot specify more than 20 skills')
     .optional(),
   content: z.string().max(1000, 'Task content cannot exceed 1000 characters').optional(),
-});
+  auto_use_item: z.boolean().optional(),
+}).refine(
+  (data) => {
+    if (data.exp !== undefined) {
+      return data.skillIds !== undefined && data.skillIds.length > 0;
+    }
+    return true;
+  },
+  {
+    message: 'When exp is specified, skillIds must be provided as a non-empty array. Without skillIds, XP cannot be applied to any attributes.',
+    path: ['skillIds'],
+  }
+);
 
 export const SearchTasksSchema = z.object({
   categoryId: z.number().positive('Category ID must be positive').optional(),
@@ -83,7 +97,18 @@ export const CreateAchievementSchema = z.object({
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be hex format (e.g., #66CCFF)').optional(),
   unlocked: z.boolean().optional().default(false),
   write_feeling: z.boolean().optional(),
-});
+}).refine(
+  (data) => {
+    if (data.exp !== undefined) {
+      return data.skills !== undefined && data.skills.length > 0;
+    }
+    return true;
+  },
+  {
+    message: 'When exp is specified, skills must be provided as a non-empty array. Without skills, XP cannot be applied to any attributes.',
+    path: ['skills'],
+  }
+);
 
 export const UpdateAchievementSchema = z.object({
   edit_id: z.number().int().positive('Achievement ID must be positive'),
@@ -103,7 +128,18 @@ export const UpdateAchievementSchema = z.object({
   secret: z.boolean().optional(),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be hex format').optional(),
   unlocked: z.boolean().optional(),
-});
+}).refine(
+  (data) => {
+    if (data.exp !== undefined) {
+      return data.skills !== undefined && data.skills.length > 0;
+    }
+    return true;
+  },
+  {
+    message: 'When exp is specified, skills must be provided as a non-empty array. Without skills, XP cannot be applied to any attributes.',
+    path: ['skills'],
+  }
+);
 
 export const DeleteAchievementSchema = z.object({
   edit_id: z.number().int().positive('Achievement ID must be positive'),
@@ -119,6 +155,8 @@ export const EditTaskSchema = z.object({
   coin: z.number().int().min(0, 'Coin must be non-negative').optional(),
   coin_var: z.number().int().min(0, 'Coin variance must be non-negative').optional(),
   exp: z.number().int().min(0, 'Experience must be non-negative').optional(),
+  exp_set_type: z.enum(['absolute', 'relative']).optional(),
+  coin_set_type: z.enum(['absolute', 'relative']).optional(),
   skills: z.array(z.number().int().positive('Skill IDs must be positive')).optional(),
   category: z.number().int().min(0, 'Category must be non-negative').optional(),
   frequency: z.number().int().optional(),
@@ -141,6 +179,17 @@ export const EditTaskSchema = z.object({
 }).refine(
   (data) => data.id !== undefined || data.gid !== undefined || data.name !== undefined,
   { message: 'At least one of id, gid, or name must be provided' }
+).refine(
+  (data) => {
+    if (data.exp !== undefined) {
+      return data.skills !== undefined && data.skills.length > 0;
+    }
+    return true;
+  },
+  {
+    message: 'When exp is specified, skills must be provided as a non-empty array. Without skills, XP cannot be applied to any attributes.',
+    path: ['skills'],
+  }
 );
 
 // Item Effect Schema

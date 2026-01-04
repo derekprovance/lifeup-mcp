@@ -104,7 +104,18 @@ The server supports "safe mutations" - create/update/delete operations that requ
 **Safe Mutations (Available):**
 1. **Task Management:**
    - `create_task` - Creates tasks that must be manually completed in the app
-   - `edit_task` - Edit existing task properties (name, rewards, deadline, category, appearance)
+   - `edit_task` - Edit existing task properties (name, rewards, deadline, category, appearance). Supports absolute/relative value adjustments via exp_set_type and coin_set_type parameters.
+
+   **XP Parameter:**
+   - `exp` is optional. When specified, you must provide the `skillIds` (create_task) or `skills` (edit_task) array to indicate which attributes should receive the XP.
+   - When omitted, the task's XP value remains unchanged from its current value.
+   - Example: `create_task(name: "Learn Rust", exp: 50, skillIds: [1, 2])` - Sets XP to 50 and applies to attributes 1 and 2
+   - Example: `edit_task(id: 1, exp: 75, skills: [1, 2])` - Updates XP to 75 and applies to attributes 1 and 2
+
+   **Auto Use Items:**
+   - Both `create_task` and `edit_task` support `auto_use_item` parameter (boolean, defaults to false)
+   - When true, item rewards are automatically consumed/used when the task is completed
+   - Example: `edit_task(id: 1, auto_use_item: true)` - Items will auto-consume on task completion
 
 2. **Achievement Management:**
    - `create_achievement` - Create new achievements without unlocking them (locked by default)

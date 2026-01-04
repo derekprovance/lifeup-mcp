@@ -132,6 +132,9 @@ export class LifeUpClient {
         params.append('skills', String(id));
       });
     }
+    if (request.auto_use_item !== undefined) {
+      params.append('auto_use_item', String(request.auto_use_item));
+    }
 
     return `${LIFEUP_URL_SCHEMES.TASK_CREATE}?${params.toString().replace(/\+/g, '%20')}`;
   }
@@ -877,6 +880,8 @@ export class LifeUpClient {
     this.appendIfDefined(params, 'coin', request.coin);
     this.appendIfDefined(params, 'coin_var', request.coin_var);
     this.appendIfDefined(params, 'exp', request.exp);
+    this.appendIfDefined(params, 'exp_set_type', request.exp_set_type);
+    this.appendIfDefined(params, 'coin_set_type', request.coin_set_type);
 
     // Skills array
     this.appendArray(params, 'skills', request.skills);

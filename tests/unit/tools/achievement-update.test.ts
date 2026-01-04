@@ -181,6 +181,7 @@ describe('AchievementTools.updateAchievement - Delete + Recreate for Conditions'
         edit_id: 109,
         exp: 200, // Override exp
         coin: 300, // Override coin
+        skills: [1], // Required when exp is provided
         conditions_json: [{ type: 0, target: 1, related_id: 208 }],
       };
 
@@ -361,6 +362,7 @@ describe('AchievementTools.updateAchievement - Delete + Recreate for Conditions'
       const input = {
         edit_id: 109,
         exp: 200,
+        skills: [1], // Required when exp is provided
       };
 
       const result = await AchievementTools.updateAchievement(input);

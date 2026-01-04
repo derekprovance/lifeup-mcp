@@ -126,7 +126,7 @@ describe('CreateTaskSchema', () => {
     });
 
     it('accepts zero exp', () => {
-      const result = CreateTaskSchema.parse({ name: 'Task', exp: 0 });
+      const result = CreateTaskSchema.parse({ name: 'Task', exp: 0, skillIds: [1] });
       expect(result.exp).toBe(0);
     });
 
@@ -134,6 +134,36 @@ describe('CreateTaskSchema', () => {
       const maxContent = 'x'.repeat(1000);
       const result = CreateTaskSchema.parse({ name: 'Task', content: maxContent });
       expect(result.content).toBe(maxContent);
+    });
+  });
+
+  describe('exp and skillIds relationship validation', () => {
+    it('rejects exp without skillIds', () => {
+      expect(() => CreateTaskSchema.parse({ name: 'Task', exp: 100 }))
+        .toThrow('When exp is specified, skillIds must be provided as a non-empty array');
+    });
+
+    it('rejects exp with empty skillIds array', () => {
+      expect(() => CreateTaskSchema.parse({ name: 'Task', exp: 100, skillIds: [] }))
+        .toThrow('When exp is specified, skillIds must be provided as a non-empty array');
+    });
+
+    it('accepts exp with non-empty skillIds', () => {
+      const result = CreateTaskSchema.parse({ name: 'Task', exp: 100, skillIds: [1] });
+      expect(result.exp).toBe(100);
+      expect(result.skillIds).toEqual([1]);
+    });
+
+    it('accepts skillIds without exp (one-way validation)', () => {
+      const result = CreateTaskSchema.parse({ name: 'Task', skillIds: [1, 2] });
+      expect(result.skillIds).toEqual([1, 2]);
+      expect(result.exp).toBeUndefined();
+    });
+
+    it('accepts exp of 0 with skillIds (edge case)', () => {
+      const result = CreateTaskSchema.parse({ name: 'Task', exp: 0, skillIds: [1] });
+      expect(result.exp).toBe(0);
+      expect(result.skillIds).toEqual([1]);
     });
   });
 });
@@ -394,6 +424,7 @@ describe('CreateAchievementSchema', () => {
         secret: true,
         color: '#FF6B6B',
         unlocked: false,
+        skills: [1, 2],
       };
       const result = CreateAchievementSchema.parse(input);
       expect(result).toMatchObject(input);
@@ -498,6 +529,57 @@ describe('CreateAchievementSchema', () => {
       expect(result3.color).toBe('#abcdef');
     });
   });
+
+  describe('exp and skills relationship validation', () => {
+    it('rejects exp without skills', () => {
+      expect(() => CreateAchievementSchema.parse({
+        name: 'Test',
+        category_id: 1,
+        exp: 100,
+      })).toThrow('When exp is specified, skills must be provided as a non-empty array');
+    });
+
+    it('rejects exp with empty skills array', () => {
+      expect(() => CreateAchievementSchema.parse({
+        name: 'Test',
+        category_id: 1,
+        exp: 100,
+        skills: [],
+      })).toThrow('When exp is specified, skills must be provided as a non-empty array');
+    });
+
+    it('accepts exp with non-empty skills', () => {
+      const result = CreateAchievementSchema.parse({
+        name: 'Test',
+        category_id: 1,
+        exp: 100,
+        skills: [1],
+      });
+      expect(result.exp).toBe(100);
+      expect(result.skills).toEqual([1]);
+    });
+
+    it('accepts skills without exp (one-way validation)', () => {
+      const result = CreateAchievementSchema.parse({
+        name: 'Test',
+        category_id: 1,
+        skills: [1, 2],
+      });
+      expect(result.skills).toEqual([1, 2]);
+      expect(result.exp).toBeUndefined();
+    });
+
+    it('accepts exp of 0 with skills (edge case)', () => {
+      const result = CreateAchievementSchema.parse({
+        name: 'Test',
+        category_id: 1,
+        exp: 0,
+        skills: [1],
+      });
+      expect(result.exp).toBe(0);
+      expect(result.skills).toEqual([1]);
+    });
+  });
 });
 
 // ============================================================================
@@ -526,6 +608,7 @@ describe('UpdateAchievementSchema', () => {
         coin_set_type: 'relative',
         exp: 50,
         exp_set_type: 'absolute',
+        skills: [1],
       });
       expect(result.coin_set_type).toBe('relative');
       expect(result.exp_set_type).toBe('absolute');
@@ -548,6 +631,52 @@ describe('UpdateAchievementSchema', () => {
         edit_id: 5,
         coin_set_type: 'invalid' as any,
       })).toThrow();
+    });
+  });
+
+  describe('exp and skills relationship validation', () => {
+    it('rejects exp without skills', () => {
+      expect(() => UpdateAchievementSchema.parse({
+        edit_id: 5,
+        exp: 100,
+      })).toThrow('When exp is specified, skills must be provided as a non-empty array');
+    });
+
+    it('rejects exp with empty skills array', () => {
+      expect(() => UpdateAchievementSchema.parse({
+        edit_id: 5,
+        exp: 100,
+        skills: [],
+      })).toThrow('When exp is specified, skills must be provided as a non-empty array');
+    });
+
+    it('accepts exp with non-empty skills', () => {
+      const result = UpdateAchievementSchema.parse({
+        edit_id: 5,
+        exp: 100,
+        skills: [1],
+      });
+      expect(result.exp).toBe(100);
+      expect(result.skills).toEqual([1]);
+    });
+
+    it('accepts skills without exp (one-way validation)', () => {
+      const result = UpdateAchievementSchema.parse({
+        edit_id: 5,
+        skills: [1, 2],
+      });
+      expect(result.skills).toEqual([1, 2]);
+      expect(result.exp).toBeUndefined();
+    });
+
+    it('accepts exp of 0 with skills (edge case)', () => {
+      const result = UpdateAchievementSchema.parse({
+        edit_id: 5,
+        exp: 0,
+        skills: [1],
+      });
+      expect(result.exp).toBe(0);
+      expect(result.skills).toEqual([1]);
     });
   });
 });
@@ -609,6 +738,7 @@ describe('EditTaskSchema', () => {
         importance: 3,
         difficulty: 2,
         color: '#FF6B6B',
+        skills: [1, 2],
       };
       const result = EditTaskSchema.parse(input);
       expect(result).toMatchObject(input);
@@ -704,6 +834,36 @@ describe('EditTaskSchema', () => {
     it('accepts background alpha of 1', () => {
       const result = EditTaskSchema.parse({ id: 1, background_alpha: 1 });
       expect(result.background_alpha).toBe(1);
+    });
+  });
+
+  describe('exp and skills relationship validation', () => {
+    it('rejects exp without skills', () => {
+      expect(() => EditTaskSchema.parse({ id: 1, exp: 100 }))
+        .toThrow('When exp is specified, skills must be provided as a non-empty array');
+    });
+
+    it('rejects exp with empty skills array', () => {
+      expect(() => EditTaskSchema.parse({ id: 1, exp: 100, skills: [] }))
+        .toThrow('When exp is specified, skills must be provided as a non-empty array');
+    });
+
+    it('accepts exp with non-empty skills', () => {
+      const result = EditTaskSchema.parse({ id: 1, exp: 100, skills: [1] });
+      expect(result.exp).toBe(100);
+      expect(result.skills).toEqual([1]);
+    });
+
+    it('accepts skills without exp (one-way validation)', () => {
+      const result = EditTaskSchema.parse({ id: 1, skills: [1, 2] });
+      expect(result.skills).toEqual([1, 2]);
+      expect(result.exp).toBeUndefined();
+    });
+
+    it('accepts exp of 0 with skills (edge case)', () => {
+      const result = EditTaskSchema.parse({ id: 1, exp: 0, skills: [1] });
+      expect(result.exp).toBe(0);
+      expect(result.skills).toEqual([1]);
     });
   });
 });
