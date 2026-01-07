@@ -41,6 +41,8 @@ export const LIFEUP_URL_SCHEMES = {
   PENALTY: 'lifeup://api/penalty',
   // Skill creation/editing/deletion format: lifeup://api/skill?content=...&exp=...
   SKILL: 'lifeup://api/skill',
+  // Subtask creation/editing format: lifeup://api/subtask?main_id=...&todo=...
+  SUBTASK: 'lifeup://api/subtask',
 } as const;
 
 // Task status codes

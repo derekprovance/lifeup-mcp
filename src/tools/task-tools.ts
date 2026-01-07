@@ -10,10 +10,14 @@ import {
   TaskHistorySchema,
   GetTaskDetailsSchema,
   DeleteTaskSchema,
+  CreateSubtaskSchema,
+  EditSubtaskSchema,
   type CreateTaskInput,
   type SearchTasksInput,
   type TaskHistoryInput,
   type GetTaskDetailsInput,
+  type CreateSubtaskInput,
+  type EditSubtaskInput,
 } from '../config/validation.js';
 import * as Types from '../client/types.js';
 import { TASK_STATUS } from '../client/constants.js';
@@ -172,7 +176,7 @@ function formatTaskSummary(task: Types.Task, includeStatus: boolean = true): str
 
 export class TaskTools {
   /**
-   * Create a new task in LifeUp
+   * Create a new task in LifeUp with optional subtasks
    */
   static async createTask(input: unknown): Promise<string> {
     try {
@@ -181,9 +185,9 @@ export class TaskTools {
 
       await ensureServerHealthy();
 
-      const task = await lifeupClient.createTask(validated);
+      const result = await lifeupClient.createTask(validated);
 
-      return (
+      let response =
         `✓ Task created successfully!\n\n` +
         `**Task**: ${validated.name}\n` +
         `**Experience**: ${validated.exp || 0} XP\n` +
@@ -195,8 +199,36 @@ export class TaskTools {
         (validated.content ? `**Description**: ${validated.content}\n` : '') +
         (validated.deadline
           ? `**Deadline**: ${new Date(validated.deadline).toLocaleString()}\n`
-          : '')
-      );
+          : '');
+
+      // Add subtask creation results
+      if (result.subtaskBatchResult) {
+        const { successes, failures } = result.subtaskBatchResult;
+        const totalRequested = validated.subtasks?.length || 0;
+
+        if (successes.length > 0) {
+          response += `\n**Subtasks Created**: ${successes.length}/${totalRequested}\n`;
+          successes.forEach((subtask, index) => {
+            response += `  ✓ Subtask ID: ${subtask.subtask_id}`;
+            if (validated.subtasks && validated.subtasks[index]) {
+              response += ` - ${validated.subtasks[index].todo}`;
+            }
+            response += '\n';
+          });
+        }
+
+        if (failures.length > 0) {
+          response += `\n**⚠️ Subtask Creation Failures**: ${failures.length}/${totalRequested}\n`;
+          failures.forEach((failure, index) => {
+            response += `  ✗ ${index + 1}. "${failure.subtask.todo}"\n`;
+            response += `     Error: ${failure.error}\n`;
+          });
+        }
+      } else if (validated.subtasks && validated.subtasks.length > 0) {
+        response += `\n⚠️ Warning: Subtasks were requested but could not be created. The main task was created successfully.\n`;
+      }
+
+      return response;
     } catch (error) {
       return handleToolError(error, 'creating task');
     }
@@ -408,6 +440,57 @@ export class TaskTools {
       return result;
     } catch (error) {
       return handleToolError(error, 'fetching task details');
+    }
+  }
+
+  /**
+   * Create a subtask for an existing task
+   */
+  static async createSubtask(input: unknown): Promise<string> {
+    try {
+      const validated = CreateSubtaskSchema.parse(input);
+      configManager.logIfDebug('Creating subtask:', validated);
+
+      await ensureServerHealthy();
+
+      const result = await lifeupClient.createSubtask(validated);
+
+      return (
+        `✓ Subtask created successfully!\n\n` +
+        `**Content**: ${validated.todo}\n` +
+        `**Subtask ID**: ${result.subtask_id}\n` +
+        `**Subtask Group ID**: ${result.subtask_gid}\n` +
+        `**Parent Task ID**: ${result.main_task_id}\n` +
+        (validated.exp ? `**Experience**: ${validated.exp} XP\n` : '') +
+        (validated.coin ? `**Coin Reward**: ${validated.coin}` + (validated.coin_var ? ` (+/- ${validated.coin_var})` : '') + `\n` : '')
+      );
+    } catch (error) {
+      return handleToolError(error, 'creating subtask');
+    }
+  }
+
+  /**
+   * Edit an existing subtask
+   */
+  static async editSubtask(input: unknown): Promise<string> {
+    try {
+      const validated = EditSubtaskSchema.parse(input);
+      configManager.logIfDebug('Editing subtask:', validated);
+
+      await ensureServerHealthy();
+
+      const result = await lifeupClient.editSubtask(validated);
+
+      return (
+        `✓ Subtask edited successfully!\n\n` +
+        `**Subtask ID**: ${result.subtask_id}\n` +
+        `**Parent Task ID**: ${result.main_task_id}\n` +
+        (validated.todo ? `**Updated Content**: ${validated.todo}\n` : '') +
+        (validated.exp !== undefined ? `**Experience**: ${validated.exp} XP (${validated.exp_set_type || 'absolute'})\n` : '') +
+        (validated.coin !== undefined ? `**Coin**: ${validated.coin} (${validated.coin_set_type || 'absolute'})\n` : '')
+      );
+    } catch (error) {
+      return handleToolError(error, 'editing subtask');
     }
   }
 }

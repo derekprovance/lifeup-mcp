@@ -155,6 +155,93 @@ export interface CreateTaskRequest {
   task_type?: number; // 0=normal, 1=count, 2=negative, 3=API (requires LifeUp v1.99.1+)
   target_times?: number; // Target count for count tasks (required when task_type=1)
   is_affect_shop_reward?: boolean; // Whether count affects shop reward calculation (only valid when task_type=1)
+  subtasks?: SubtaskDefinition[]; // Array of subtasks to create with the main task
+}
+
+// Subtask API Response
+export interface SubtaskApiResponse {
+  main_task_id: number;
+  subtask_id: number;
+  subtask_gid: number;
+}
+
+// Subtask Batch Operation Result (includes both successes and failures)
+export interface SubtaskBatchResult {
+  successes: SubtaskApiResponse[];
+  failures: Array<{
+    subtask: SubtaskDefinition;
+    error: string;
+  }>;
+}
+
+// Subtask Definition for inline creation with create_task
+export interface SubtaskDefinition {
+  todo: string; // Required: subtask content
+  remind_time?: number;
+  order?: number;
+  coin?: number;
+  coin_var?: number;
+  exp?: number;
+  auto_use_item?: boolean;
+  item_id?: number;
+  item_name?: string;
+  item_amount?: number;
+  items?: ItemReward[];
+}
+
+// Create Subtask Request (standalone tool)
+export interface CreateSubtaskRequest {
+  // Parent task identification (at least one required)
+  main_id?: number;
+  main_gid?: number;
+  main_name?: string;
+
+  // Subtask content (required)
+  todo: string;
+
+  // Optional fields
+  remind_time?: number;
+  order?: number;
+  coin?: number;
+  coin_var?: number;
+  exp?: number;
+  auto_use_item?: boolean;
+
+  // Item rewards
+  item_id?: number;
+  item_name?: string;
+  item_amount?: number;
+  items?: ItemReward[];
+}
+
+// Edit Subtask Request (standalone tool)
+export interface EditSubtaskRequest {
+  // Parent task identification (at least one required)
+  main_id?: number;
+  main_gid?: number;
+  main_name?: string;
+
+  // Subtask identification for editing (at least one required)
+  edit_id?: number;
+  edit_gid?: number;
+  edit_name?: string;
+
+  // Fields to update
+  todo?: string;
+  remind_time?: number;
+  order?: number;
+  coin?: number;
+  coin_var?: number;
+  exp?: number;
+  coin_set_type?: 'absolute' | 'relative';
+  exp_set_type?: 'absolute' | 'relative';
+  auto_use_item?: boolean;
+
+  // Item rewards
+  item_id?: number;
+  item_name?: string;
+  item_amount?: number;
+  items?: ItemReward[];
 }
 
 export interface TaskMatchResult {

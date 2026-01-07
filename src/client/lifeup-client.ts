@@ -64,9 +64,11 @@ export class LifeUpClient {
 
   /**
    * Create a task via lifeup:// URL scheme
+   * If subtasks are provided, creates the main task first, then creates subtasks
    */
-  async createTask(request: Types.CreateTaskRequest): Promise<Types.Task | null> {
-    return this.executeUrlSchemeOperation(
+  async createTask(request: Types.CreateTaskRequest): Promise<{ task: Types.Task | null; subtaskBatchResult?: Types.SubtaskBatchResult }> {
+    // First create the main task
+    const taskResult = await this.executeUrlSchemeOperation(
       () => {
         const url = this.buildTaskUrl(request);
         this.configManager.logIfDebug('Creating task with URL:', url);
@@ -79,6 +81,47 @@ export class LifeUpClient {
         return { ...request, id: Date.now(), gid: 1 } as Types.Task;
       }
     );
+
+    // If subtasks were provided and we have a task ID, create them
+    let subtaskBatchResult: Types.SubtaskBatchResult | undefined;
+    if (request.subtasks && request.subtasks.length > 0) {
+      // We need the task ID to create subtasks
+      // The API response should include task_id or we need to fetch it by name
+      let taskId: number | null = null;
+
+      if (taskResult && typeof taskResult === 'object' && 'id' in taskResult && taskResult.id) {
+        taskId = taskResult.id;
+      } else {
+        // Fallback: search for task by name, using most recent match
+        this.configManager.logIfDebug('Task ID not in response, fetching by name:', request.name);
+        const tasks = await this.getAllTasks();
+        // Sort by created_time descending to find the most recently created task
+        const matchingTasks = tasks
+          .filter(t => t.name === request.name)
+          .sort((a, b) => b.created_time - a.created_time);
+
+        if (matchingTasks.length > 0) {
+          taskId = matchingTasks[0].id;
+          if (matchingTasks.length > 1) {
+            this.configManager.logIfDebug(
+              `Multiple tasks with name "${request.name}" found. Using most recent (ID: ${taskId})`
+            );
+          }
+        }
+      }
+
+      if (taskId) {
+        this.configManager.logIfDebug(`Creating ${request.subtasks.length} subtasks for task ${taskId}`);
+        subtaskBatchResult = await this.createSubtasksBatch(taskId, request.subtasks);
+      } else {
+        this.configManager.logIfDebug('Could not determine task ID for subtask creation');
+      }
+    }
+
+    return {
+      task: taskResult,
+      subtaskBatchResult,
+    };
   }
 
   /**
@@ -921,6 +964,146 @@ export class LifeUpClient {
     this.appendIfDefined(params, 'delete', request.delete, (val) => val ? 'true' : 'false');
 
     return this.buildFinalUrl(LIFEUP_URL_SCHEMES.SKILL, params);
+  }
+
+  /**
+   * Create a subtask for an existing task
+   */
+  async createSubtask(request: Types.CreateSubtaskRequest): Promise<Types.SubtaskApiResponse> {
+    return this.executeUrlSchemeOperation(
+      () => {
+        const url = this.buildSubtaskUrl(request);
+        this.configManager.logIfDebug('Creating subtask with URL:', url);
+        return url;
+      },
+      'create subtask',
+      (response) => {
+        this.configManager.logIfDebug('Create subtask response:', response);
+        return response.data as Types.SubtaskApiResponse;
+      }
+    );
+  }
+
+  /**
+   * Edit an existing subtask
+   */
+  async editSubtask(request: Types.EditSubtaskRequest): Promise<Types.SubtaskApiResponse> {
+    return this.executeUrlSchemeOperation(
+      () => {
+        const url = this.buildSubtaskUrl(request);
+        this.configManager.logIfDebug('Editing subtask with URL:', url);
+        return url;
+      },
+      'edit subtask',
+      (response) => {
+        this.configManager.logIfDebug('Edit subtask response:', response);
+        return response.data as Types.SubtaskApiResponse;
+      }
+    );
+  }
+
+  /**
+   * Create multiple subtasks for a task (batch operation)
+   * Used internally when creating task with inline subtasks
+   * Returns both successful creations and any failures
+   */
+  private async createSubtasksBatch(
+    parentTaskId: number,
+    subtasks: Types.SubtaskDefinition[]
+  ): Promise<Types.SubtaskBatchResult> {
+    const successes: Types.SubtaskApiResponse[] = [];
+    const failures: Array<{ subtask: Types.SubtaskDefinition; error: string }> = [];
+
+    // Create subtasks sequentially to preserve order
+    for (const subtask of subtasks) {
+      try {
+        const request: Types.CreateSubtaskRequest = {
+          main_id: parentTaskId,
+          ...subtask,
+        };
+        const result = await this.createSubtask(request);
+        successes.push(result);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.configManager.logIfDebug(`Failed to create subtask: ${subtask.todo}`, error);
+        failures.push({
+          subtask,
+          error: errorMessage,
+        });
+        // Continue with remaining subtasks - allow partial success
+      }
+    }
+
+    return { successes, failures };
+  }
+
+  /**
+   * Build subtask URL for create/edit operations
+   */
+  private buildSubtaskUrl(request: Types.CreateSubtaskRequest | Types.EditSubtaskRequest): string {
+    // Validate string inputs for security
+    if (request.main_name) {
+      this.validateStringInput(request.main_name, 'main task name');
+    }
+    if ('todo' in request && request.todo) {
+      this.validateStringInput(request.todo, 'subtask content');
+    }
+    if ('edit_name' in request && request.edit_name) {
+      this.validateStringInput(request.edit_name, 'subtask name');
+    }
+
+    const params = new URLSearchParams();
+
+    // Parent task identification (at least one required)
+    this.appendIfDefined(params, 'main_id', request.main_id);
+    this.appendIfDefined(params, 'main_gid', request.main_gid);
+    this.appendIfDefined(params, 'main_name', request.main_name);
+
+    // Edit mode if edit identifiers present
+    if ('edit_id' in request) {
+      this.appendIfDefined(params, 'edit_id', request.edit_id);
+    }
+    if ('edit_gid' in request) {
+      this.appendIfDefined(params, 'edit_gid', request.edit_gid);
+    }
+    if ('edit_name' in request) {
+      this.appendIfDefined(params, 'edit_name', request.edit_name);
+    }
+
+    // Subtask content
+    if ('todo' in request) {
+      this.appendIfDefined(params, 'todo', request.todo);
+    }
+
+    // Optional fields
+    this.appendIfDefined(params, 'remind_time', request.remind_time);
+    this.appendIfDefined(params, 'order', request.order);
+    this.appendIfDefined(params, 'coin', request.coin);
+    this.appendIfDefined(params, 'coin_var', request.coin_var);
+    this.appendIfDefined(params, 'exp', request.exp);
+
+    // Set types (edit only)
+    if ('coin_set_type' in request) {
+      this.appendIfDefined(params, 'coin_set_type', request.coin_set_type);
+    }
+    if ('exp_set_type' in request) {
+      this.appendIfDefined(params, 'exp_set_type', request.exp_set_type);
+    }
+
+    // Boolean flags
+    this.appendIfDefined(params, 'auto_use_item', request.auto_use_item, (val) => val ? 'true' : 'false');
+
+    // Item rewards - single item
+    this.appendIfDefined(params, 'item_id', request.item_id);
+    this.appendIfDefined(params, 'item_name', request.item_name);
+    this.appendIfDefined(params, 'item_amount', request.item_amount);
+
+    // Item rewards - array
+    if (request.items && request.items.length > 0) {
+      this.appendIfDefined(params, 'items', request.items, (val) => JSON.stringify(val));
+    }
+
+    return this.buildFinalUrl(LIFEUP_URL_SCHEMES.SUBTASK, params);
   }
 }
 

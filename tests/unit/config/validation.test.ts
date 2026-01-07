@@ -22,6 +22,9 @@ import {
   EditShopItemSchema,
   ApplyPenaltySchema,
   EditSkillSchema,
+  SubtaskDefinitionSchema,
+  CreateSubtaskSchema,
+  EditSubtaskSchema,
 } from '@/config/validation';
 
 // ============================================================================
@@ -1838,6 +1841,413 @@ describe('PurchaseLimitSchema', () => {
     it('rejects non-positive value', () => {
       expect(() => PurchaseLimitSchema.parse({ type: 'daily', value: 0 }))
         .toThrow('Limit value must be positive');
+    });
+  });
+});
+
+// ============================================================================
+// SubtaskDefinitionSchema Tests
+// ============================================================================
+
+describe('SubtaskDefinitionSchema', () => {
+  describe('valid inputs', () => {
+    it('accepts minimal subtask with just todo', () => {
+      const result = SubtaskDefinitionSchema.parse({ todo: 'Review notes' });
+      expect(result.todo).toBe('Review notes');
+    });
+
+    it('accepts subtask with all optional fields', () => {
+      const input = {
+        todo: 'Complete chapter',
+        coin: 50,
+        exp: 100,
+        remind_time: Date.now() + 86400000,
+        order: 1,
+        coin_var: 5,
+        auto_use_item: true,
+        item_id: 1,
+        item_amount: 2,
+      };
+      const result = SubtaskDefinitionSchema.parse(input);
+      expect(result).toMatchObject(input);
+    });
+
+    it('accepts subtask with item rewards array', () => {
+      const result = SubtaskDefinitionSchema.parse({
+        todo: 'Task with items',
+        items: [
+          { item_id: 1, amount: 5 },
+          { item_id: 2, amount: 3 },
+        ],
+      });
+      expect(result.items).toHaveLength(2);
+    });
+
+    it('accepts exactly 200 character todo', () => {
+      const todo = 'x'.repeat(200);
+      const result = SubtaskDefinitionSchema.parse({ todo });
+      expect(result.todo).toBe(todo);
+    });
+  });
+
+  describe('invalid inputs', () => {
+    it('rejects empty todo', () => {
+      expect(() => SubtaskDefinitionSchema.parse({ todo: '' }))
+        .toThrow('Subtask content cannot be empty');
+    });
+
+    it('rejects todo exceeding 200 characters', () => {
+      const longTodo = 'x'.repeat(201);
+      expect(() => SubtaskDefinitionSchema.parse({ todo: longTodo }))
+        .toThrow('Subtask content cannot exceed 200 characters');
+    });
+
+    it('rejects negative coin', () => {
+      expect(() => SubtaskDefinitionSchema.parse({ todo: 'Task', coin: -5 }))
+        .toThrow('Coin must be non-negative');
+    });
+
+    it('rejects coin exceeding 999999', () => {
+      expect(() => SubtaskDefinitionSchema.parse({ todo: 'Task', coin: 1000000 }))
+        .toThrow('Coin too large');
+    });
+
+    it('rejects negative exp', () => {
+      expect(() => SubtaskDefinitionSchema.parse({ todo: 'Task', exp: -10 }))
+        .toThrow('Experience must be non-negative');
+    });
+
+    it('rejects exp exceeding 99999', () => {
+      expect(() => SubtaskDefinitionSchema.parse({ todo: 'Task', exp: 100000 }))
+        .toThrow('Experience too large');
+    });
+
+    it('rejects item amount of 0', () => {
+      expect(() => SubtaskDefinitionSchema.parse({ todo: 'Task', item_amount: 0 }))
+        .toThrow();
+    });
+
+    it('rejects item amount exceeding 99', () => {
+      expect(() => SubtaskDefinitionSchema.parse({ todo: 'Task', item_amount: 100 }))
+        .toThrow('Item amount must be 1-99');
+    });
+  });
+});
+
+// ============================================================================
+// CreateSubtaskSchema Tests
+// ============================================================================
+
+describe('CreateSubtaskSchema', () => {
+  describe('valid inputs', () => {
+    it('accepts subtask with main_id', () => {
+      const result = CreateSubtaskSchema.parse({
+        main_id: 5,
+        todo: 'Subtask content',
+      });
+      expect(result.main_id).toBe(5);
+      expect(result.todo).toBe('Subtask content');
+    });
+
+    it('accepts subtask with main_gid', () => {
+      const result = CreateSubtaskSchema.parse({
+        main_gid: 3,
+        todo: 'Subtask',
+      });
+      expect(result.main_gid).toBe(3);
+    });
+
+    it('accepts subtask with main_name', () => {
+      const result = CreateSubtaskSchema.parse({
+        main_name: 'Parent Task',
+        todo: 'Subtask',
+      });
+      expect(result.main_name).toBe('Parent Task');
+    });
+
+    it('accepts subtask with full optional fields', () => {
+      const input = {
+        main_id: 5,
+        todo: 'Complete section',
+        coin: 25,
+        exp: 50,
+        remind_time: Date.now() + 3600000,
+        order: 2,
+        auto_use_item: true,
+        item_id: 3,
+        item_amount: 1,
+      };
+      const result = CreateSubtaskSchema.parse(input);
+      expect(result).toMatchObject(input);
+    });
+
+    it('accepts subtask with items array', () => {
+      const result = CreateSubtaskSchema.parse({
+        main_id: 5,
+        todo: 'Task',
+        items: [{ item_id: 1, amount: 5 }],
+      });
+      expect(result.items).toHaveLength(1);
+    });
+  });
+
+  describe('invalid inputs', () => {
+    it('rejects subtask without parent task identifier', () => {
+      expect(() => CreateSubtaskSchema.parse({ todo: 'Subtask' }))
+        .toThrow('At least one of main_id, main_gid, or main_name must be provided');
+    });
+
+    it('rejects subtask without todo', () => {
+      expect(() => CreateSubtaskSchema.parse({ main_id: 5 }))
+        .toThrow();
+    });
+
+    it('rejects empty todo', () => {
+      expect(() => CreateSubtaskSchema.parse({ main_id: 5, todo: '' }))
+        .toThrow('Subtask content is required');
+    });
+
+    it('rejects non-positive main_id', () => {
+      expect(() => CreateSubtaskSchema.parse({ main_id: 0, todo: 'Task' }))
+        .toThrow('Main task ID must be positive');
+    });
+
+    it('rejects non-positive main_gid', () => {
+      expect(() => CreateSubtaskSchema.parse({ main_gid: -1, todo: 'Task' }))
+        .toThrow('Main task group ID must be positive');
+    });
+
+    it('rejects todo exceeding 200 characters', () => {
+      const longTodo = 'x'.repeat(201);
+      expect(() => CreateSubtaskSchema.parse({ main_id: 5, todo: longTodo }))
+        .toThrow('Subtask content cannot exceed 200 characters');
+    });
+
+    it('rejects main_name exceeding 200 characters', () => {
+      const longName = 'x'.repeat(201);
+      expect(() => CreateSubtaskSchema.parse({ main_name: longName, todo: 'Task' }))
+        .toThrow('Main task name cannot exceed 200 characters');
+    });
+  });
+
+  describe('parent task identifier validation', () => {
+    it('accepts main_id and main_gid together', () => {
+      const result = CreateSubtaskSchema.parse({
+        main_id: 5,
+        main_gid: 3,
+        todo: 'Task',
+      });
+      expect(result.main_id).toBe(5);
+      expect(result.main_gid).toBe(3);
+    });
+
+    it('accepts main_id and main_name together', () => {
+      const result = CreateSubtaskSchema.parse({
+        main_id: 5,
+        main_name: 'Parent',
+        todo: 'Task',
+      });
+      expect(result.main_id).toBe(5);
+      expect(result.main_name).toBe('Parent');
+    });
+
+    it('accepts all three identifiers together', () => {
+      const result = CreateSubtaskSchema.parse({
+        main_id: 5,
+        main_gid: 3,
+        main_name: 'Parent',
+        todo: 'Task',
+      });
+      expect(result.main_id).toBe(5);
+      expect(result.main_gid).toBe(3);
+      expect(result.main_name).toBe('Parent');
+    });
+  });
+});
+
+// ============================================================================
+// EditSubtaskSchema Tests
+// ============================================================================
+
+describe('EditSubtaskSchema', () => {
+  describe('valid inputs', () => {
+    it('accepts edit with main_id and edit_id', () => {
+      const result = EditSubtaskSchema.parse({
+        main_id: 5,
+        edit_id: 10,
+        todo: 'Updated content',
+      });
+      expect(result.main_id).toBe(5);
+      expect(result.edit_id).toBe(10);
+    });
+
+    it('accepts edit with main_name and edit_name', () => {
+      const result = EditSubtaskSchema.parse({
+        main_name: 'Parent Task',
+        edit_name: 'Old Subtask Name',
+        todo: 'New content',
+      });
+      expect(result.main_name).toBe('Parent Task');
+      expect(result.edit_name).toBe('Old Subtask Name');
+    });
+
+    it('accepts edit with relative coin adjustment', () => {
+      const result = EditSubtaskSchema.parse({
+        main_id: 5,
+        edit_id: 10,
+        coin: 50,
+        coin_set_type: 'relative',
+      });
+      expect(result.coin_set_type).toBe('relative');
+    });
+
+    it('accepts edit with absolute exp adjustment', () => {
+      const result = EditSubtaskSchema.parse({
+        main_id: 5,
+        edit_id: 10,
+        exp: 100,
+        exp_set_type: 'absolute',
+      });
+      expect(result.exp_set_type).toBe('absolute');
+    });
+
+    it('accepts partial update with only some fields', () => {
+      const result = EditSubtaskSchema.parse({
+        main_id: 5,
+        edit_id: 10,
+        coin: 25,
+      });
+      expect(result.coin).toBe(25);
+      expect(result.todo).toBeUndefined();
+    });
+
+    it('accepts edit with items array', () => {
+      const result = EditSubtaskSchema.parse({
+        main_id: 5,
+        edit_id: 10,
+        items: [{ item_id: 2, amount: 3 }],
+      });
+      expect(result.items).toHaveLength(1);
+    });
+  });
+
+  describe('invalid inputs', () => {
+    it('rejects edit without parent task identifier', () => {
+      expect(() => EditSubtaskSchema.parse({ edit_id: 10, todo: 'Updated' }))
+        .toThrow('At least one of main_id, main_gid, or main_name must be provided');
+    });
+
+    it('rejects edit without subtask identifier', () => {
+      expect(() => EditSubtaskSchema.parse({ main_id: 5, todo: 'Updated' }))
+        .toThrow('At least one of edit_id, edit_gid, or edit_name must be provided');
+    });
+
+    it('rejects non-positive main_id', () => {
+      expect(() => EditSubtaskSchema.parse({
+        main_id: 0,
+        edit_id: 10,
+        todo: 'Updated',
+      })).toThrow('Main task ID must be positive');
+    });
+
+    it('rejects non-positive edit_id', () => {
+      expect(() => EditSubtaskSchema.parse({
+        main_id: 5,
+        edit_id: -1,
+        todo: 'Updated',
+      })).toThrow('Subtask ID must be positive');
+    });
+
+    it('rejects invalid coin_set_type', () => {
+      expect(() => EditSubtaskSchema.parse({
+        main_id: 5,
+        edit_id: 10,
+        coin: 50,
+        coin_set_type: 'invalid' as any,
+      })).toThrow();
+    });
+
+    it('rejects invalid exp_set_type', () => {
+      expect(() => EditSubtaskSchema.parse({
+        main_id: 5,
+        edit_id: 10,
+        exp: 100,
+        exp_set_type: 'invalid' as any,
+      })).toThrow();
+    });
+
+    it('rejects todo exceeding 200 characters', () => {
+      const longTodo = 'x'.repeat(201);
+      expect(() => EditSubtaskSchema.parse({
+        main_id: 5,
+        edit_id: 10,
+        todo: longTodo,
+      })).toThrow('Subtask content cannot exceed 200 characters');
+    });
+  });
+
+  describe('parent and subtask identifier validation', () => {
+    it('accepts main_id + main_gid with edit_id + edit_gid', () => {
+      const result = EditSubtaskSchema.parse({
+        main_id: 5,
+        main_gid: 3,
+        edit_id: 10,
+        edit_gid: 7,
+        todo: 'Updated',
+      });
+      expect(result.main_id).toBe(5);
+      expect(result.main_gid).toBe(3);
+      expect(result.edit_id).toBe(10);
+      expect(result.edit_gid).toBe(7);
+    });
+
+    it('accepts main_gid + main_name with edit_name only', () => {
+      const result = EditSubtaskSchema.parse({
+        main_gid: 3,
+        main_name: 'Parent',
+        edit_name: 'Subtask',
+        todo: 'Updated',
+      });
+      expect(result.main_gid).toBe(3);
+      expect(result.main_name).toBe('Parent');
+      expect(result.edit_name).toBe('Subtask');
+    });
+  });
+
+  describe('set_type validation', () => {
+    it('accepts both coin_set_type and exp_set_type together', () => {
+      const result = EditSubtaskSchema.parse({
+        main_id: 5,
+        edit_id: 10,
+        coin: 50,
+        coin_set_type: 'relative',
+        exp: 100,
+        exp_set_type: 'absolute',
+      });
+      expect(result.coin_set_type).toBe('relative');
+      expect(result.exp_set_type).toBe('absolute');
+    });
+
+    it('accepts coin adjustment without exp_set_type', () => {
+      const result = EditSubtaskSchema.parse({
+        main_id: 5,
+        edit_id: 10,
+        coin: 50,
+        coin_set_type: 'absolute',
+      });
+      expect(result.coin_set_type).toBe('absolute');
+      expect(result.exp_set_type).toBeUndefined();
+    });
+
+    it('accepts exp adjustment without coin_set_type', () => {
+      const result = EditSubtaskSchema.parse({
+        main_id: 5,
+        edit_id: 10,
+        exp: 100,
+        exp_set_type: 'relative',
+      });
+      expect(result.exp_set_type).toBe('relative');
+      expect(result.coin_set_type).toBeUndefined();
     });
   });
 });

@@ -4,6 +4,24 @@
 
 import { z } from 'zod';
 
+// Subtask Definition Schema (for inline subtask creation with create_task)
+export const SubtaskDefinitionSchema = z.object({
+  todo: z.string().min(1, 'Subtask content cannot be empty').max(200, 'Subtask content cannot exceed 200 characters'),
+  remind_time: z.number().int().positive('Remind time must be valid timestamp').optional(),
+  order: z.number().int().optional(),
+  coin: z.number().int().min(0, 'Coin must be non-negative').max(999999, 'Coin too large').optional(),
+  coin_var: z.number().int().min(0, 'Coin variance must be non-negative').optional(),
+  exp: z.number().int().min(0, 'Experience must be non-negative').max(99999, 'Experience too large').optional(),
+  auto_use_item: z.boolean().optional(),
+  item_id: z.number().int().positive('Item ID must be positive').optional(),
+  item_name: z.string().optional(),
+  item_amount: z.number().int().min(1).max(99, 'Item amount must be 1-99').optional(),
+  items: z.array(z.object({
+    item_id: z.number().int().positive('Item ID must be positive'),
+    amount: z.number().int().min(1).max(99, 'Amount must be 1-99'),
+  })).optional(),
+});
+
 export const CreateTaskSchema = z.object({
   name: z
     .string()
@@ -27,6 +45,7 @@ export const CreateTaskSchema = z.object({
   task_type: z.number().int().min(0, 'Task type must be 0-3').max(3, 'Task type must be 0-3').optional(),
   target_times: z.number().int().positive('Target times must be positive').optional(),
   is_affect_shop_reward: z.boolean().optional(),
+  subtasks: z.array(SubtaskDefinitionSchema).max(50, 'Cannot create more than 50 subtasks at once').optional(),
 }).refine(
   (data) => {
     if (data.exp !== undefined) {
@@ -336,6 +355,81 @@ export const EditSkillSchema = z.object({
   { message: 'When creating a skill, content (name) is required. When editing, id is required.' }
 );
 
+// Create Subtask Schema (standalone tool)
+export const CreateSubtaskSchema = z.object({
+  // Parent task identification (at least one required)
+  main_id: z.number().int().positive('Main task ID must be positive').optional(),
+  main_gid: z.number().int().positive('Main task group ID must be positive').optional(),
+  main_name: z.string().max(200, 'Main task name cannot exceed 200 characters').optional(),
+
+  // Subtask content (required)
+  todo: z.string().min(1, 'Subtask content is required').max(200, 'Subtask content cannot exceed 200 characters'),
+
+  // Optional fields
+  remind_time: z.number().int().positive('Remind time must be valid timestamp').optional(),
+  order: z.number().int().optional(),
+  coin: z.number().int().min(0, 'Coin must be non-negative').max(999999, 'Coin too large').optional(),
+  coin_var: z.number().int().min(0, 'Coin variance must be non-negative').optional(),
+  exp: z.number().int().min(0, 'Experience must be non-negative').max(99999, 'Experience too large').optional(),
+  auto_use_item: z.boolean().optional(),
+  item_id: z.number().int().positive('Item ID must be positive').optional(),
+  item_name: z.string().optional(),
+  item_amount: z.number().int().min(1).max(99, 'Item amount must be 1-99').optional(),
+  items: z.array(z.object({
+    item_id: z.number().int().positive('Item ID must be positive'),
+    amount: z.number().int().min(1).max(99, 'Amount must be 1-99'),
+  })).optional(),
+}).refine(
+  (data) => data.main_id !== undefined || data.main_gid !== undefined || data.main_name !== undefined,
+  {
+    message: 'At least one of main_id, main_gid, or main_name must be provided to identify the parent task',
+    path: ['main_id'],
+  }
+);
+
+// Edit Subtask Schema
+export const EditSubtaskSchema = z.object({
+  // Parent task identification (at least one required)
+  main_id: z.number().int().positive('Main task ID must be positive').optional(),
+  main_gid: z.number().int().positive('Main task group ID must be positive').optional(),
+  main_name: z.string().max(200, 'Main task name cannot exceed 200 characters').optional(),
+
+  // Subtask identification for editing (at least one required)
+  edit_id: z.number().int().positive('Subtask ID must be positive').optional(),
+  edit_gid: z.number().int().positive('Subtask group ID must be positive').optional(),
+  edit_name: z.string().max(200, 'Subtask name cannot exceed 200 characters').optional(),
+
+  // Fields to update
+  todo: z.string().min(1).max(200, 'Subtask content cannot exceed 200 characters').optional(),
+  remind_time: z.number().int().positive('Remind time must be valid timestamp').optional(),
+  order: z.number().int().optional(),
+  coin: z.number().int().min(0, 'Coin must be non-negative').max(999999, 'Coin too large').optional(),
+  coin_var: z.number().int().min(0, 'Coin variance must be non-negative').optional(),
+  exp: z.number().int().min(0, 'Experience must be non-negative').max(99999, 'Experience too large').optional(),
+  coin_set_type: z.enum(['absolute', 'relative']).optional(),
+  exp_set_type: z.enum(['absolute', 'relative']).optional(),
+  auto_use_item: z.boolean().optional(),
+  item_id: z.number().int().positive('Item ID must be positive').optional(),
+  item_name: z.string().optional(),
+  item_amount: z.number().int().min(1).max(99, 'Item amount must be 1-99').optional(),
+  items: z.array(z.object({
+    item_id: z.number().int().positive('Item ID must be positive'),
+    amount: z.number().int().min(1).max(99, 'Amount must be 1-99'),
+  })).optional(),
+}).refine(
+  (data) => data.main_id !== undefined || data.main_gid !== undefined || data.main_name !== undefined,
+  {
+    message: 'At least one of main_id, main_gid, or main_name must be provided to identify the parent task',
+    path: ['main_id'],
+  }
+).refine(
+  (data) => data.edit_id !== undefined || data.edit_gid !== undefined || data.edit_name !== undefined,
+  {
+    message: 'At least one of edit_id, edit_gid, or edit_name must be provided to identify the subtask to edit',
+    path: ['edit_id'],
+  }
+);
+
 // Export types
 export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;
 export type SearchTasksInput = z.infer<typeof SearchTasksSchema>;
@@ -351,3 +445,6 @@ export type AddShopItemInput = z.infer<typeof AddShopItemSchema>;
 export type EditShopItemInput = z.infer<typeof EditShopItemSchema>;
 export type ApplyPenaltyInput = z.infer<typeof ApplyPenaltySchema>;
 export type EditSkillInput = z.infer<typeof EditSkillSchema>;
+export type SubtaskDefinitionInput = z.infer<typeof SubtaskDefinitionSchema>;
+export type CreateSubtaskInput = z.infer<typeof CreateSubtaskSchema>;
+export type EditSubtaskInput = z.infer<typeof EditSubtaskSchema>;
