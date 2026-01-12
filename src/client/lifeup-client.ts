@@ -1070,7 +1070,7 @@ export class LifeUpClient {
     this.appendIfDefined(params, 'own_number', request.own_number);
     this.appendIfDefined(params, 'unlist', request.unlist, (val) => (val ? 'true' : 'false'));
 
-    return this.buildFinalUrl(LIFEUP_URL_SCHEMES.ITEM, params);
+    return this.buildFinalUrl(LIFEUP_URL_SCHEMES.ITEM_CREATE, params);
   }
 
   /**

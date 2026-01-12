@@ -220,7 +220,7 @@ describe('LifeUpClient URL Building', () => {
         name: 'Potion',
       };
       const url = (client as any).buildAddShopItemUrl(request);
-      expect(url).toContain('lifeup://api/item');
+      expect(url).toContain('lifeup://api/add_item');
       expect(url).toContain('name=Potion');
     });
 
