@@ -21,6 +21,15 @@ import { ZodError } from 'zod';
 
 export class MutationTools {
   /**
+   * Gets today's date at 23:59:00 as a timestamp in milliseconds
+   */
+  private static getTodayEndOfDay(): number {
+    const today = new Date();
+    today.setHours(23, 59, 0, 0); // Set to 23:59:00.000
+    return today.getTime();
+  }
+
+  /**
    * Helper to ensure LifeUp server is reachable
    */
   private static async ensureServerHealthy(): Promise<void> {
@@ -58,6 +67,11 @@ export class MutationTools {
     try {
       const validated = EditTaskSchema.parse(input);
       configManager.logIfDebug('Editing task:', validated);
+
+      // Auto-set deadline to today at 23:59:00 if frequency is set but deadline is not
+      if (validated.frequency !== undefined && validated.frequency !== 0 && !validated.deadline) {
+        validated.deadline = this.getTodayEndOfDay();
+      }
 
       await this.ensureServerHealthy();
 

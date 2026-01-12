@@ -46,6 +46,15 @@ function formatTimestamp(timestamp: number | null | undefined, label: string): s
 }
 
 /**
+ * Gets today's date at 23:59:00 as a timestamp in milliseconds
+ */
+function getTodayEndOfDay(): number {
+  const today = new Date();
+  today.setHours(23, 59, 0, 0); // Set to 23:59:00.000
+  return today.getTime();
+}
+
+/**
  * Format subtasks with completion status
  */
 function formatSubTasks(subTasks: Types.SubTask[]): string {
@@ -182,6 +191,11 @@ export class TaskTools {
     try {
       const validated = CreateTaskSchema.parse(input);
       configManager.logIfDebug('Creating task:', validated);
+
+      // Auto-set deadline to today at 23:59:00 if frequency is set but deadline is not
+      if (validated.frequency !== undefined && validated.frequency !== 0 && !validated.deadline) {
+        validated.deadline = getTodayEndOfDay();
+      }
 
       await ensureServerHealthy();
 
