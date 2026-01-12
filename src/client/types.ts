@@ -147,6 +147,7 @@ export interface CreateTaskRequest {
   coinVar?: number;
   categoryId?: number;
   deadline?: number;
+  frequency?: number;
   skillIds?: number[];
   content?: string;
   auto_use_item?: boolean;

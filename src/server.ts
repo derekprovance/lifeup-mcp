@@ -282,6 +282,13 @@ class LifeUpServer {
               type: 'number',
               description: 'Deadline as timestamp in milliseconds (optional)',
             },
+            frequency: {
+              type: 'number',
+              description:
+                'Repeat frequency: 0=once (default), 1=daily, N=every N days (N>1), ' +
+                '-1=unlimited, -3=Ebbinghaus (requires v1.99.1), -4=monthly, -5=yearly. ' +
+                'Defaults to 0 (one-time task) if omitted.',
+            },
             content: {
               type: 'string',
               description: 'Task description/content (optional, max 1000 characters)',
@@ -1043,7 +1050,9 @@ class LifeUpServer {
             },
             frequency: {
               type: 'number',
-              description: 'Repeat frequency (-1=unlimited, -3=Ebbinghaus, -4=monthly, -5=yearly)',
+              description:
+                'Repeat frequency: 0=once, 1=daily, N=every N days (N>1), ' +
+                '-1=unlimited, -3=Ebbinghaus (requires v1.99.1), -4=monthly, -5=yearly',
             },
             deadline: {
               type: 'number',

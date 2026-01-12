@@ -276,6 +276,67 @@ describe('CreateTaskSchema', () => {
       expect(result.is_affect_shop_reward).toBe(true);
     });
   });
+
+  describe('frequency parameter validation', () => {
+    it('accepts task with frequency: 0 (once)', () => {
+      const result = CreateTaskSchema.parse({ name: 'Task', frequency: 0 });
+      expect(result.frequency).toBe(0);
+    });
+
+    it('accepts task with frequency: 1 (daily)', () => {
+      const result = CreateTaskSchema.parse({ name: 'Task', frequency: 1 });
+      expect(result.frequency).toBe(1);
+    });
+
+    it('accepts task with frequency: 7 (weekly)', () => {
+      const result = CreateTaskSchema.parse({ name: 'Task', frequency: 7 });
+      expect(result.frequency).toBe(7);
+    });
+
+    it('accepts task with frequency: -1 (unlimited)', () => {
+      const result = CreateTaskSchema.parse({ name: 'Task', frequency: -1 });
+      expect(result.frequency).toBe(-1);
+    });
+
+    it('accepts task with frequency: -3 (Ebbinghaus)', () => {
+      const result = CreateTaskSchema.parse({ name: 'Task', frequency: -3 });
+      expect(result.frequency).toBe(-3);
+    });
+
+    it('accepts task with frequency: -4 (monthly)', () => {
+      const result = CreateTaskSchema.parse({ name: 'Task', frequency: -4 });
+      expect(result.frequency).toBe(-4);
+    });
+
+    it('accepts task with frequency: -5 (yearly)', () => {
+      const result = CreateTaskSchema.parse({ name: 'Task', frequency: -5 });
+      expect(result.frequency).toBe(-5);
+    });
+
+    it('rejects non-integer frequency values', () => {
+      expect(() => CreateTaskSchema.parse({ name: 'Task', frequency: 1.5 }))
+        .toThrow();
+    });
+
+    it('accepts task without frequency (optional field)', () => {
+      const result = CreateTaskSchema.parse({ name: 'Task' });
+      expect(result.frequency).toBeUndefined();
+    });
+
+    it('accepts task with frequency in combination with other parameters', () => {
+      const result = CreateTaskSchema.parse({
+        name: 'Daily Task',
+        frequency: 1,
+        exp: 50,
+        skillIds: [1],
+        coin: 100,
+        deadline: Date.now() + 86400000,
+      });
+      expect(result.frequency).toBe(1);
+      expect(result.exp).toBe(50);
+      expect(result.coin).toBe(100);
+    });
+  });
 });
 
 // ============================================================================

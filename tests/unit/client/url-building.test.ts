@@ -86,6 +86,42 @@ describe('LifeUpClient URL Building', () => {
       const url = (client as any).buildTaskUrl(request);
       expect(url).toContain('auto_use_item=true');
     });
+
+    it('should include frequency parameter when provided', () => {
+      const request: Types.CreateTaskRequest = {
+        name: 'Daily Task',
+        frequency: 1,
+      };
+      const url = (client as any).buildTaskUrl(request);
+      expect(url).toContain('frequency=1');
+    });
+
+    it('should handle recurring task with frequency values', () => {
+      const testCases = [
+        { frequency: 0, expected: 'frequency=0' }, // Once
+        { frequency: 1, expected: 'frequency=1' }, // Daily
+        { frequency: 7, expected: 'frequency=7' }, // Weekly
+        { frequency: -4, expected: 'frequency=-4' }, // Monthly
+        { frequency: -5, expected: 'frequency=-5' }, // Yearly
+      ];
+
+      testCases.forEach(({ frequency, expected }) => {
+        const request: Types.CreateTaskRequest = {
+          name: 'Recurring Task',
+          frequency,
+        };
+        const url = (client as any).buildTaskUrl(request);
+        expect(url).toContain(expected);
+      });
+    });
+
+    it('should not include frequency parameter when undefined', () => {
+      const request: Types.CreateTaskRequest = {
+        name: 'One-time Task',
+      };
+      const url = (client as any).buildTaskUrl(request);
+      expect(url).not.toContain('frequency=');
+    });
   });
 
   describe('buildAchievementUrl', () => {

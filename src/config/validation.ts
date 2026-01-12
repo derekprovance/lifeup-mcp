@@ -52,6 +52,7 @@ export const CreateTaskSchema = z
     coinVar: z.number().nonnegative('Coin variance must be non-negative').optional(),
     categoryId: z.number().nonnegative('Category ID must be non-negative').optional(),
     deadline: z.number().positive('Deadline must be a valid timestamp').optional(),
+    frequency: z.number().int().optional(),
     skillIds: z
       .array(z.number().positive('Skill IDs must be positive'))
       .max(20, 'Cannot specify more than 20 skills')

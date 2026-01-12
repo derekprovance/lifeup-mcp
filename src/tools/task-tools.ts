@@ -199,6 +199,9 @@ export class TaskTools {
         (validated.content ? `**Description**: ${validated.content}\n` : '') +
         (validated.deadline
           ? `**Deadline**: ${new Date(validated.deadline).toLocaleString()}\n`
+          : '') +
+        (validated.frequency !== undefined && validated.frequency !== 0
+          ? `**Frequency**: ${formatFrequency(validated.frequency)}\n`
           : '');
 
       // Add subtask creation results

@@ -296,6 +296,7 @@ export class LifeUpClient {
     this.appendIfDefined(params, 'coin_var', request.coinVar);
     this.appendIfDefined(params, 'category', request.categoryId);
     this.appendIfDefined(params, 'deadline', request.deadline);
+    this.appendIfDefined(params, 'frequency', request.frequency);
 
     // String field
     this.appendIfDefined(params, 'notes', request.content);

@@ -135,6 +135,23 @@ The server supports "safe mutations" - create/update/delete operations that requ
      - `create_task(name: "Read 30min", task_type: 1, target_times: 7, is_affect_shop_reward: true)` - Count task with shop reward scaling
      - `edit_task(id: 1, task_type: 1, target_times: 10)` - Convert existing task to count task with target of 10
 
+   **Frequency Parameter:**
+   - `frequency` is optional. When specified, creates a recurring task. When omitted, defaults to 0 (one-time task).
+   - Frequency values:
+     - 0 = Once (one-time task, default)
+     - 1 = Daily
+     - N (N>1) = Every N days (e.g., 3 = every 3 days, 7 = weekly)
+     - -1 = Unlimited (repeatable without time limit)
+     - -3 = Ebbinghaus (spaced repetition pattern, requires LifeUp v1.99.1+)
+     - -4 = Monthly
+     - -5 = Yearly
+   - Examples:
+     - `create_task(name: "Daily Exercise", frequency: 1)` - Daily recurring task
+     - `create_task(name: "Weekly Review", frequency: 7)` - Every 7 days
+     - `create_task(name: "Monthly Budget Review", frequency: -4)` - Monthly
+     - `create_task(name: "Learn New Skill", frequency: -3)` - Ebbinghaus pattern
+   - Note: For `edit_task`, the frequency parameter works identically
+
 2. **Achievement Management:**
    - `create_achievement` - Create new achievements without unlocking them (locked by default)
    - `update_achievement` - Modify achievement properties
