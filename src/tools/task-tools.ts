@@ -201,9 +201,13 @@ export class TaskTools {
 
       const result = await lifeupClient.createTask(validated);
 
+      // Debug: Log the result structure
+      configManager.logIfDebug('createTask result:', JSON.stringify(result, null, 2));
+
       let response =
         `✓ Task created successfully!\n\n` +
         `**Task**: ${validated.name}\n` +
+        (result.task?.id ? `**ID**: ${result.task.id}\n` : '') +
         `**Experience**: ${validated.exp || 0} XP\n` +
         `**Coin Reward**: ${validated.coin || 0}` +
         (validated.coinVar ? ` (+/- ${validated.coinVar})` : '') +

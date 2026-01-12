@@ -240,6 +240,43 @@ export class AchievementTools {
   }
 
   /**
+   * Format unlock conditions into human-readable text
+   * Maps condition type codes (0-20) to descriptive strings
+   */
+  private static formatConditions(conditions: Types.AchievementCondition[]): string[] {
+    const conditionDescriptions: Record<number, (c: Types.AchievementCondition) => string> = {
+      0: (c) => `Complete task (ID: ${c.related_id}) ${c.target} time(s)`,
+      1: (c) => `Complete task (ID: ${c.related_id}) ${c.target} day(s) in a row`,
+      3: (c) => `Complete ${c.target} pomodoro session(s)`,
+      4: (c) => `Use LifeUp for ${c.target} day(s)`,
+      5: (c) => `Receive ${c.target} like(s)`,
+      6: (c) => `Complete tasks ${c.target} day(s) in a row`,
+      7: (c) => `Reach ${c.target.toLocaleString()} coins`,
+      8: (c) => `Earn ${c.target.toLocaleString()} coins in one day`,
+      9: (c) => `Complete ${c.target} pomodoro(s) for task (ID: ${c.related_id})`,
+      10: (c) => `Purchase item (ID: ${c.related_id}) ${c.target} time(s)`,
+      11: (c) => `Use item (ID: ${c.related_id}) ${c.target} time(s)`,
+      12: (c) => `Obtain item (ID: ${c.related_id}) from loot box ${c.target} time(s)`,
+      13: (c) => `Reach level ${c.target} in skill (ID: ${c.related_id})`,
+      14: (c) => `Reach life level ${c.target}`,
+      15: (c) => `Obtain item (ID: ${c.related_id}) ${c.target} time(s) total`,
+      16: (c) => `Synthesize item (ID: ${c.related_id}) ${c.target} time(s)`,
+      17: (c) => `Own ${c.target} of item (ID: ${c.related_id})`,
+      18: (c) => `Focus on task (ID: ${c.related_id}) for ${c.target} minute(s)`,
+      19: (c) => `Save ${c.target.toLocaleString()} coins in ATM`,
+      20: (c) => `External API condition (target: ${c.target})`,
+    };
+
+    return conditions.map((condition) => {
+      const formatter = conditionDescriptions[condition.type];
+      if (formatter) {
+        return formatter(condition);
+      }
+      return `Unknown condition type ${condition.type} (target: ${condition.target})`;
+    });
+  }
+
+  /**
    * Format achievements list for display
    */
   private static formatAchievementsList(achievements: Types.Achievement[]): string {
@@ -249,9 +286,17 @@ export class AchievementTools {
 
     const unlocked = achievements.filter((a) => a.is_unlocked);
     const locked = achievements.filter((a) => !a.is_unlocked);
+    const hasConditionData = achievements.some((a) => a.conditions_json && a.conditions_json.length > 0);
 
     let result = `## Achievements\n\n`;
-    result += `**Unlocked**: ${unlocked.length} | **Locked**: ${locked.length}\n\n`;
+    result += `**Unlocked**: ${unlocked.length} | **Locked**: ${locked.length}\n`;
+
+    if (hasConditionData) {
+      result += `**Unlock conditions**: Available ✓\n`;
+    } else {
+      result += `**Unlock conditions**: Not available (may require newer LifeUp version)\n`;
+    }
+    result += `\n`;
 
     if (unlocked.length > 0) {
       result += `### Unlocked Achievements\n`;
@@ -259,6 +304,11 @@ export class AchievementTools {
         result += `✓ **${achievement.name}**\n`;
         if (achievement.description) {
           result += `  ${achievement.description}\n`;
+        }
+        // Show conditions for unlocked achievements (informational)
+        if (achievement.conditions_json && achievement.conditions_json.length > 0) {
+          const conditions = this.formatConditions(achievement.conditions_json);
+          result += `  Unlocked by: ${conditions.join('; ')}\n`;
         }
       });
       if (unlocked.length > 10) {
@@ -272,9 +322,17 @@ export class AchievementTools {
         const progress = achievement.progress || 0;
         const target = achievement.target || 1;
         const progressPercent = Math.round((progress / target) * 100);
-        result += `○ **${achievement.name}** (${progressPercent}% progress)\n`;
+        result += `○ **${achievement.name}** (${progressPercent}% progress: ${progress}/${target})\n`;
         if (achievement.description) {
           result += `  ${achievement.description}\n`;
+        }
+
+        // Display unlock conditions for locked achievements (most important!)
+        if (achievement.conditions_json && achievement.conditions_json.length > 0) {
+          const conditions = this.formatConditions(achievement.conditions_json);
+          result += `  **Unlock by**: ${conditions.join(' AND ')}\n`;
+        } else {
+          result += `  **Unlock by**: Not available\n`;
         }
       });
       if (locked.length > 10) {

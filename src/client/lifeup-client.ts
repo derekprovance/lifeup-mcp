@@ -145,7 +145,7 @@ export class LifeUpClient {
     request: Types.CreateTaskRequest
   ): Promise<{ task: Types.Task | null; subtaskBatchResult?: Types.SubtaskBatchResult }> {
     // First create the main task
-    const taskResult = await this.executeUrlSchemeOperation(
+    let taskResult = await this.executeUrlSchemeOperation(
       () => {
         const url = this.buildTaskUrl(request);
         this.configManager.logIfDebug('Creating task with URL:', url);
@@ -191,6 +191,8 @@ export class LifeUpClient {
 
     // If subtasks were provided and we have a task ID, create them
     let subtaskBatchResult: Types.SubtaskBatchResult | undefined;
+    let foundTaskId: number | null = null;
+
     if (request.subtasks && request.subtasks.length > 0) {
       // Warn if attempting to create a large number of subtasks
       const SUBTASK_BATCH_THRESHOLD = 50;
@@ -257,12 +259,30 @@ export class LifeUpClient {
       }
 
       if (taskId) {
+        foundTaskId = taskId;
         this.configManager.logIfDebug(
           `Creating ${request.subtasks.length} subtasks for task ${taskId}`
         );
         subtaskBatchResult = await this.createSubtasksBatch(taskId, request.subtasks);
       } else {
         this.configManager.logIfDebug('Could not determine task ID for subtask creation');
+      }
+    } else if (!taskResult) {
+      // Even if no subtasks were requested, if we don't have a task result, try to find the task by name
+      // This ensures we always return the task ID if possible
+      this.telemetry.fallbackLookups++;
+      this.configManager.logIfDebug('No task result from API, attempting fallback lookup by name');
+      const tasks = await this.getAllTasks();
+      const matchingTasks = tasks.filter((t) => t.name === request.name);
+
+      if (matchingTasks.length > 0) {
+        // Use the most recently created task
+        const selectedTask = matchingTasks.reduce((latest, current) =>
+          current.created_time > latest.created_time ? current : latest
+        );
+        foundTaskId = selectedTask.id;
+        taskResult = selectedTask as Types.Task;
+        this.configManager.logIfDebug(`Found task by name (fallback): ID ${foundTaskId}`);
       }
     }
 
@@ -272,7 +292,7 @@ export class LifeUpClient {
     }
 
     return {
-      task: taskResult,
+      task: taskResult || (foundTaskId ? ({ id: foundTaskId } as Types.Task) : null),
       subtaskBatchResult,
     };
   }

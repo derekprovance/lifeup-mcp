@@ -18,6 +18,11 @@
         "test:ui": "vitest --ui",
         "test:coverage": "vitest --coverage",
         "test:run": "vitest run",
+        "test:e2e": "vitest run --config vitest.e2e.config.ts",
+        "test:e2e:watch": "vitest --config vitest.e2e.config.ts",
+        "test:smoke": "node test-mcp.js",
+        "test:all": "npm run test:run && npm run test:e2e",
+        "test:safe-mode": "SAFE_MODE=true npm run test:e2e -- tests/e2e/suites/safe-mode.test.ts",
         "lint": "eslint src tests --ext .ts,.tsx",
         "lint:fix": "eslint src tests --ext .ts,.tsx --fix",
         "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\""

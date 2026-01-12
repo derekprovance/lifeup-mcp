@@ -88,6 +88,8 @@ export interface Achievement {
   items?: ItemReward[];
   color?: string;
   secret?: boolean;
+  // Unlock conditions
+  conditions_json?: AchievementCondition[];
 }
 
 export interface Skill {

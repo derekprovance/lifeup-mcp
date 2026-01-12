@@ -46,6 +46,11 @@ LifeUp Cloud API (Android Device)
 
 **tools/achievement-tools.ts** - Achievement querying, matching, and management
 - `listAchievements` - Lists all achievements by fetching from all categories (N+1 requests where N=category count), with fallback to categories if unavailable
+  - Shows unlock conditions when available (requires API support)
+  - Displays 21 condition types: task completions, coins, skills, items, usage metrics, etc.
+  - Format: "Unlock by: [condition 1] AND [condition 2]"
+  - Falls back gracefully if conditions unavailable
+  - Shows detailed progress for locked achievements (e.g., "50% progress: 5/10")
 - `listAchievementCategories` - Lists all achievement categories with IDs and descriptions
 - `matchTaskToAchievements` - Keyword-based matching algorithm to suggest relevant achievements for a task
 - `createAchievement` - Create new custom achievements with optional unlock conditions and rewards
@@ -335,6 +340,7 @@ Additional tests:
 5. **User-Friendly Errors** - All errors include actionable guidance (e.g., "update LIFEUP_HOST if IP changed")
 6. **Read-Only by Design** - API client only wraps safe endpoints, enforced at source
 7. **Granular SAFE_MODE** - SAFE_MODE distinguishes between create (allowed) and edit/delete (blocked) operations, enabling safe experimentation with new entities while preventing data corruption. Runtime enforcement provides defense-in-depth.
+8. **Graceful Condition Display** - Achievement unlock conditions are displayed when returned by the API, with human-readable formatting for all 21 condition types. System gracefully degrades to "Not available" if conditions aren't provided, maintaining backward compatibility.
 
 ## LifeUp API Integration
 
