@@ -73,8 +73,7 @@ export class AchievementTools {
 
       if (!achievements || achievements.length === 0) {
         return (
-          'Achievement data is not available. ' +
-          'Cannot match tasks to achievements at this time.'
+          'Achievement data is not available. ' + 'Cannot match tasks to achievements at this time.'
         );
       }
 
@@ -127,7 +126,8 @@ export class AchievementTools {
       let confidence = 0;
       const matchReasons: string[] = [];
 
-      const achievementText = `${achievement.name} ${achievement.description || achievement.desc || ''}`.toLowerCase();
+      const achievementText =
+        `${achievement.name} ${achievement.description || achievement.desc || ''}`.toLowerCase();
       const achievementKeywords = this.extractKeywords(achievement.name);
 
       // Direct keyword matches
@@ -232,13 +232,11 @@ export class AchievementTools {
       'finish',
     ]);
 
-    return (
-      text
-        .toLowerCase()
-        .split(/[\s\-_]+/)
-        .filter((word) => word.length > 2 && !commonWords.has(word))
-        .slice(0, 5) // Limit to 5 keywords
-    );
+    return text
+      .toLowerCase()
+      .split(/[\s\-_]+/)
+      .filter((word) => word.length > 2 && !commonWords.has(word))
+      .slice(0, 5); // Limit to 5 keywords
   }
 
   /**
@@ -352,7 +350,8 @@ export class AchievementTools {
       if (validated.coin !== undefined) updates.push('coin reward');
       if (validated.skills) updates.push('skill rewards');
       if (validated.color !== undefined) updates.push(`color to ${validated.color}`);
-      if (validated.unlocked !== undefined) updates.push(`unlock status to ${validated.unlocked ? 'unlocked' : 'locked'}`);
+      if (validated.unlocked !== undefined)
+        updates.push(`unlock status to ${validated.unlocked ? 'unlocked' : 'locked'}`);
       if (validated.coin_set_type) updates.push(`coin set type to ${validated.coin_set_type}`);
       if (validated.exp_set_type) updates.push(`experience set type to ${validated.exp_set_type}`);
 

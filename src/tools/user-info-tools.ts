@@ -82,7 +82,9 @@ export class UserInfoTools {
 
       // Add any other available properties
       const knownKeys = ['playerName', 'level', 'experience', 'version'];
-      const otherKeys = Object.keys(info).filter((key) => !knownKeys.includes(key) && info[key] !== null && info[key] !== undefined);
+      const otherKeys = Object.keys(info).filter(
+        (key) => !knownKeys.includes(key) && info[key] !== null && info[key] !== undefined
+      );
 
       if (otherKeys.length > 0) {
         result += `\n### Additional Info\n`;
@@ -127,7 +129,9 @@ export class UserInfoTools {
 
         // Display any other coin-related properties
         const mainKeys = ['coin', 'balance', 'atm'];
-        const otherKeys = Object.keys(coinInfo).filter((key) => !mainKeys.includes(key) && coinInfo[key] !== null && coinInfo[key] !== undefined);
+        const otherKeys = Object.keys(coinInfo).filter(
+          (key) => !mainKeys.includes(key) && coinInfo[key] !== null && coinInfo[key] !== undefined
+        );
 
         if (otherKeys.length > 0) {
           otherKeys.forEach((key) => {

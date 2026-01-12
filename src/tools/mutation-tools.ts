@@ -139,9 +139,12 @@ export class MutationTools {
       const updates: string[] = [];
       if (validated.set_name) updates.push(`name to "${validated.set_name}"`);
       if (validated.set_desc !== undefined) updates.push('description');
-      if (validated.set_price !== undefined) updates.push(`price (${validated.set_price_type || 'absolute'})`);
-      if (validated.stock_number !== undefined) updates.push(`stock (${validated.stock_number_type || 'absolute'})`);
-      if (validated.own_number !== undefined) updates.push(`owned quantity (${validated.own_number_type || 'absolute'})`);
+      if (validated.set_price !== undefined)
+        updates.push(`price (${validated.set_price_type || 'absolute'})`);
+      if (validated.stock_number !== undefined)
+        updates.push(`stock (${validated.stock_number_type || 'absolute'})`);
+      if (validated.own_number !== undefined)
+        updates.push(`owned quantity (${validated.own_number_type || 'absolute'})`);
       if (validated.effects) updates.push('item effects');
       if (validated.disable_purchase !== undefined) updates.push('purchase status');
 

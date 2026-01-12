@@ -6,12 +6,65 @@
 import * as Types from '../client/types.js';
 
 const COMMON_WORDS = new Set([
-  'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with',
-  'by', 'from', 'is', 'are', 'was', 'were', 'be', 'have', 'has', 'had', 'do',
-  'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can',
-  'my', 'your', 'his', 'her', 'its', 'our', 'their', 'this', 'that', 'these', 'those',
-  'i', 'you', 'he', 'she', 'it', 'we', 'they', 'new', 'old', 'good', 'bad', 'task',
-  'complete', 'finish',
+  'the',
+  'a',
+  'an',
+  'and',
+  'or',
+  'but',
+  'in',
+  'on',
+  'at',
+  'to',
+  'for',
+  'of',
+  'with',
+  'by',
+  'from',
+  'is',
+  'are',
+  'was',
+  'were',
+  'be',
+  'have',
+  'has',
+  'had',
+  'do',
+  'does',
+  'did',
+  'will',
+  'would',
+  'could',
+  'should',
+  'may',
+  'might',
+  'must',
+  'can',
+  'my',
+  'your',
+  'his',
+  'her',
+  'its',
+  'our',
+  'their',
+  'this',
+  'that',
+  'these',
+  'those',
+  'i',
+  'you',
+  'he',
+  'she',
+  'it',
+  'we',
+  'they',
+  'new',
+  'old',
+  'good',
+  'bad',
+  'task',
+  'complete',
+  'finish',
 ]);
 
 /**
@@ -52,7 +105,8 @@ export function findMatches(
     let confidence = 0;
     const matchReasons: string[] = [];
 
-    const achievementText = `${achievement.name} ${achievement.description || achievement.desc || ''}`.toLowerCase();
+    const achievementText =
+      `${achievement.name} ${achievement.description || achievement.desc || ''}`.toLowerCase();
     const achievementKeywords = extractKeywords(achievement.name);
 
     // Direct keyword matches

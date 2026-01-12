@@ -12,6 +12,21 @@ import * as Types from './types.js';
 export class LifeUpClient {
   private axiosInstance: AxiosInstance;
   private configManager: ConfigManager;
+  private tasksCache: {
+    data: Types.Task[];
+    timestamp: number;
+  } | null = null;
+  private readonly TASKS_CACHE_TTL_MS = 5000; // 5 second cache for task list
+
+  // Telemetry for tracking fallback usage and performance
+  private telemetry = {
+    taskCreations: 0,
+    taskIdExtractions: 0,
+    fallbackLookups: 0,
+    raceconditionDetections: 0,
+    cacheHits: 0,
+    cacheMisses: 0,
+  };
 
   constructor(config?: ConfigManager, axiosInstance?: AxiosInstance) {
     this.configManager = config || configManager;
@@ -34,6 +49,39 @@ export class LifeUpClient {
    */
   static create(config?: ConfigManager, axiosInstance?: AxiosInstance): LifeUpClient {
     return new LifeUpClient(config, axiosInstance);
+  }
+
+  /**
+   * Clear the task cache to force fresh fetch on next call
+   * Used internally after task creation operations
+   */
+  private clearTasksCache(): void {
+    if (this.tasksCache) {
+      this.configManager.logIfDebug('Clearing task cache after mutation');
+      this.tasksCache = null;
+    }
+  }
+
+  /**
+   * Get telemetry data for debugging and monitoring
+   * Returns statistics on task creation, cache usage, and fallback operations
+   */
+  getTelemetry(): typeof this.telemetry {
+    return { ...this.telemetry };
+  }
+
+  /**
+   * Reset telemetry counters (useful for testing)
+   */
+  resetTelemetry(): void {
+    this.telemetry = {
+      taskCreations: 0,
+      taskIdExtractions: 0,
+      fallbackLookups: 0,
+      raceconditionDetections: 0,
+      cacheHits: 0,
+      cacheMisses: 0,
+    };
   }
 
   private buildHeaders(): Record<string, string> {
@@ -64,9 +112,38 @@ export class LifeUpClient {
 
   /**
    * Create a task via lifeup:// URL scheme
-   * If subtasks are provided, creates the main task first, then creates subtasks
+   * If subtasks are provided, creates the main task first, then creates subtasks sequentially.
+   *
+   * @param request - Task creation request with optional subtasks array (max 50 subtasks recommended)
+   * @returns Object containing the created task and batch subtask results
+   *
+   * @remarks
+   * - Attempts to extract task ID from API response first (handles both snake_case and camelCase)
+   * - Falls back to name-based lookup if ID not found in response
+   * - Subtasks are created sequentially to preserve order with 50ms rate limiting between each
+   * - Partial success is allowed - some subtasks may fail while others succeed
+   * - For tasks with >50 subtasks, consider breaking into multiple operations
+   *
+   * @throws {LifeUpError} If task creation fails or server is unreachable
+   *
+   * @example
+   * ```typescript
+   * const result = await lifeupClient.createTask({
+   *   name: 'Weekly Review',
+   *   exp: 100,
+   *   subtasks: [
+   *     { todo: 'Check email', exp: 10 },
+   *     { todo: 'Update tasks', exp: 20 }
+   *   ]
+   * });
+   * console.log(result.task?.id); // Main task ID
+   * console.log(result.subtaskBatchResult?.successes); // Successfully created subtasks
+   * console.log(result.subtaskBatchResult?.failures); // Any failed subtasks
+   * ```
    */
-  async createTask(request: Types.CreateTaskRequest): Promise<{ task: Types.Task | null; subtaskBatchResult?: Types.SubtaskBatchResult }> {
+  async createTask(
+    request: Types.CreateTaskRequest
+  ): Promise<{ task: Types.Task | null; subtaskBatchResult?: Types.SubtaskBatchResult }> {
     // First create the main task
     const taskResult = await this.executeUrlSchemeOperation(
       () => {
@@ -75,16 +152,55 @@ export class LifeUpClient {
         return url;
       },
       'create task',
-      () => {
-        // Parse the response to get task details
-        // The API may return the created task ID or confirmation
-        return { ...request, id: Date.now(), gid: 1 } as Types.Task;
+      (response: Types.HttpResponse) => {
+        // Extract task ID from API response data
+        // Handle both snake_case (task_id) and camelCase (taskId) for robustness
+        if (response.data && typeof response.data === 'object') {
+          const responseData = response.data as any;
+          const taskId = responseData.task_id ?? responseData.taskId;
+          const taskGid = responseData.task_gid ?? responseData.taskGid;
+
+          if (taskId) {
+            // Track successful ID extraction in telemetry
+            this.telemetry.taskIdExtractions++;
+            this.configManager.logIfDebug(
+              `Task created with ID: ${taskId}, GID: ${taskGid ?? 'N/A'}`
+            );
+            return {
+              ...request,
+              id: taskId,
+              gid: taskGid ?? taskId,
+            } as Types.Task;
+          }
+
+          // Log the actual response structure for debugging if ID is missing
+          this.configManager.logIfDebug(
+            'Task ID not found in expected fields. Response structure:',
+            {
+              dataKeys: Object.keys(responseData),
+              data: JSON.stringify(responseData).substring(0, 200),
+            }
+          );
+        }
+
+        // If response doesn't include task ID, return null to trigger fallback
+        this.configManager.logIfDebug('Task ID not found in response, will use fallback lookup');
+        return null;
       }
     );
 
     // If subtasks were provided and we have a task ID, create them
     let subtaskBatchResult: Types.SubtaskBatchResult | undefined;
     if (request.subtasks && request.subtasks.length > 0) {
+      // Warn if attempting to create a large number of subtasks
+      const SUBTASK_BATCH_THRESHOLD = 50;
+      if (request.subtasks.length > SUBTASK_BATCH_THRESHOLD) {
+        this.configManager.logIfDebug(
+          `WARNING: Attempting to create ${request.subtasks.length} subtasks. ` +
+            `This may take a while due to sequential processing (approximately ${request.subtasks.length * 100}ms). ` +
+            `Consider breaking this into multiple operations for better reliability.`
+        );
+      }
       // We need the task ID to create subtasks
       // The API response should include task_id or we need to fetch it by name
       let taskId: number | null = null;
@@ -93,29 +209,66 @@ export class LifeUpClient {
         taskId = taskResult.id;
       } else {
         // Fallback: search for task by name, using most recent match
+        // Track fallback usage in telemetry
+        this.telemetry.fallbackLookups++;
+
         this.configManager.logIfDebug('Task ID not in response, fetching by name:', request.name);
         const tasks = await this.getAllTasks();
-        // Sort by created_time descending to find the most recently created task
+
+        // Sort by created_time descending and filter by exact name match
         const matchingTasks = tasks
-          .filter(t => t.name === request.name)
+          .filter((t) => t.name === request.name)
           .sort((a, b) => b.created_time - a.created_time);
 
         if (matchingTasks.length > 0) {
-          taskId = matchingTasks[0].id;
+          // Use the most recent task (should be the one we just created)
+          const selectedTask = matchingTasks[0];
+          taskId = selectedTask.id;
+
           if (matchingTasks.length > 1) {
-            this.configManager.logIfDebug(
-              `Multiple tasks with name "${request.name}" found. Using most recent (ID: ${taskId})`
+            // Check if multiple recent tasks exist (within 5 seconds)
+            // This indicates a potential race condition
+            const recentTasks = matchingTasks.filter(
+              (t) => selectedTask.created_time - t.created_time < 5000
             );
+
+            if (recentTasks.length > 1) {
+              // Track race condition detection in telemetry
+              this.telemetry.raceconditionDetections++;
+
+              this.configManager.logIfDebug(
+                `CRITICAL WARNING: ${recentTasks.length} tasks with name "${request.name}" created within 5 seconds. ` +
+                  `Using most recent (ID: ${taskId}, created: ${new Date(selectedTask.created_time).toISOString()}). ` +
+                  `Subtasks may be attached to the wrong task. ` +
+                  `Consider using unique task names or request task ID extraction via API.`
+              );
+            } else {
+              this.configManager.logIfDebug(
+                `Warning: Multiple tasks with name "${request.name}" found (${matchingTasks.length} total). ` +
+                  `Using most recent (ID: ${taskId}, created: ${new Date(selectedTask.created_time).toISOString()})`
+              );
+            }
+          } else {
+            this.configManager.logIfDebug(`Found task by name: ID ${taskId}`);
           }
+        } else {
+          this.configManager.logIfDebug(`No task found with name: "${request.name}"`);
         }
       }
 
       if (taskId) {
-        this.configManager.logIfDebug(`Creating ${request.subtasks.length} subtasks for task ${taskId}`);
+        this.configManager.logIfDebug(
+          `Creating ${request.subtasks.length} subtasks for task ${taskId}`
+        );
         subtaskBatchResult = await this.createSubtasksBatch(taskId, request.subtasks);
       } else {
         this.configManager.logIfDebug('Could not determine task ID for subtask creation');
       }
+    }
+
+    // Clear the task cache since we just created/modified tasks
+    if (taskResult) {
+      this.clearTasksCache();
     }
 
     return {
@@ -160,7 +313,9 @@ export class LifeUpClient {
     // Count task parameters
     this.appendIfDefined(params, 'task_type', request.task_type);
     this.appendIfDefined(params, 'target_times', request.target_times);
-    this.appendIfDefined(params, 'is_affect_shop_reward', request.is_affect_shop_reward, (val) => String(val));
+    this.appendIfDefined(params, 'is_affect_shop_reward', request.is_affect_shop_reward, (val) =>
+      String(val)
+    );
 
     return this.buildFinalUrl(LIFEUP_URL_SCHEMES.TASK_CREATE, params);
   }
@@ -170,12 +325,17 @@ export class LifeUpClient {
    */
   private async executeUrlScheme(url: string): Promise<Types.HttpResponse> {
     try {
-      this.configManager.logIfDebug(`Executing URL scheme via ${API_ENDPOINTS.API_GATEWAY}`, { url });
+      this.configManager.logIfDebug(`Executing URL scheme via ${API_ENDPOINTS.API_GATEWAY}`, {
+        url,
+      });
       const response = await this.axiosInstance.post(API_ENDPOINTS.API_GATEWAY, { urls: [url] });
       this.configManager.logIfDebug(`URL scheme response:`, response.data);
       return response.data;
     } catch (error) {
-      this.configManager.logIfDebug(`URL scheme error:`, error instanceof AxiosError ? error.message : error);
+      this.configManager.logIfDebug(
+        `URL scheme error:`,
+        error instanceof AxiosError ? error.message : error
+      );
       if (error instanceof AxiosError) {
         throw ErrorHandler.handleNetworkError(error);
       }
@@ -228,12 +388,37 @@ export class LifeUpClient {
    * Get all tasks
    */
   async getAllTasks(): Promise<Types.Task[]> {
+    // Check if cache is still valid (within 5 seconds)
+    if (this.tasksCache) {
+      const cacheAge = Date.now() - this.tasksCache.timestamp;
+      if (cacheAge < this.TASKS_CACHE_TTL_MS) {
+        // Track cache hit in telemetry
+        this.telemetry.cacheHits++;
+
+        this.configManager.logIfDebug(
+          `Using cached task list (${cacheAge}ms old, ${this.tasksCache.data.length} tasks)`
+        );
+        return this.tasksCache.data;
+      }
+    }
+
+    // Cache miss or expired
+    this.telemetry.cacheMisses++;
+
     try {
       const response = await this.axiosInstance.get<Types.HttpResponse<Types.Task[]>>(
         API_ENDPOINTS.TASKS
       );
 
       if (response.data.code === RESPONSE_CODE.SUCCESS && Array.isArray(response.data.data)) {
+        // Cache the result
+        this.tasksCache = {
+          data: response.data.data,
+          timestamp: Date.now(),
+        };
+        this.configManager.logIfDebug(
+          `Fetched and cached ${response.data.data.length} tasks`
+        );
         return response.data.data;
       }
 
@@ -370,7 +555,10 @@ export class LifeUpClient {
       return [];
     } catch (error) {
       // Gracefully handle per-category failures - don't block entire operation
-      this.configManager.logIfDebug(`Failed to fetch achievements for category ${categoryId}:`, error);
+      this.configManager.logIfDebug(
+        `Failed to fetch achievements for category ${categoryId}:`,
+        error
+      );
       return [];
     }
   }
@@ -395,7 +583,7 @@ export class LifeUpClient {
       this.configManager.logIfDebug(`Found ${categories.length} achievement categories`);
 
       // Step 2: Fetch achievements from all categories in parallel
-      const achievementPromises = categories.map(category =>
+      const achievementPromises = categories.map((category) =>
         this.getAchievementsByCategory(category.id)
       );
 
@@ -404,7 +592,9 @@ export class LifeUpClient {
       // Step 3: Flatten and combine all achievements
       const allAchievements = achievementArrays.flat();
 
-      this.configManager.logIfDebug(`Fetched ${allAchievements.length} total achievements from ${categories.length} categories`);
+      this.configManager.logIfDebug(
+        `Fetched ${allAchievements.length} total achievements from ${categories.length} categories`
+      );
 
       return allAchievements.length > 0 ? allAchievements : null;
     } catch (error) {
@@ -570,7 +760,9 @@ export class LifeUpClient {
   /**
    * Build achievement URL for create/update operations
    */
-  private buildAchievementUrl(request: Types.CreateAchievementRequest | Types.UpdateAchievementRequest): string {
+  private buildAchievementUrl(
+    request: Types.CreateAchievementRequest | Types.UpdateAchievementRequest
+  ): string {
     // Validate string inputs for security
     this.validateStringInput(request.name, 'achievement name');
     this.validateStringInput(request.desc, 'achievement description');
@@ -602,7 +794,9 @@ export class LifeUpClient {
 
     // Conditions JSON
     if (request.conditions_json && request.conditions_json.length > 0) {
-      this.appendIfDefined(params, 'conditions_json', request.conditions_json, (val) => JSON.stringify(val));
+      this.appendIfDefined(params, 'conditions_json', request.conditions_json, (val) =>
+        JSON.stringify(val)
+      );
     }
 
     // Skills array
@@ -618,10 +812,12 @@ export class LifeUpClient {
     this.appendIfDefined(params, 'item_amount', request.item_amount);
 
     // Boolean flags
-    this.appendIfDefined(params, 'secret', request.secret, (val) => val ? 'true' : 'false');
-    this.appendIfDefined(params, 'unlocked', request.unlocked, (val) => val ? 'true' : 'false');
+    this.appendIfDefined(params, 'secret', request.secret, (val) => (val ? 'true' : 'false'));
+    this.appendIfDefined(params, 'unlocked', request.unlocked, (val) => (val ? 'true' : 'false'));
     if ('write_feeling' in request) {
-      this.appendIfDefined(params, 'write_feeling', request.write_feeling, (val) => val ? 'true' : 'false');
+      this.appendIfDefined(params, 'write_feeling', request.write_feeling, (val) =>
+        val ? 'true' : 'false'
+      );
     }
 
     // Color
@@ -636,7 +832,7 @@ export class LifeUpClient {
   private buildAchievementDeleteUrl(request: Types.DeleteAchievementRequest): string {
     const params = new URLSearchParams();
     this.appendIfDefined(params, 'edit_id', request.edit_id);
-    this.appendIfDefined(params, 'delete', true, (val) => val ? 'true' : 'false');
+    this.appendIfDefined(params, 'delete', true, (val) => (val ? 'true' : 'false'));
     return this.buildFinalUrl(LIFEUP_URL_SCHEMES.ACHIEVEMENT, params);
   }
 
@@ -750,7 +946,9 @@ export class LifeUpClient {
     // URLSearchParams will encode these, but we validate as a security measure
     if (!/^[\w\s\-.,;:!?()@'\\/]*$/.test(value)) {
       // Allow common punctuation but flag anything that looks suspicious
-      this.configManager.logIfDebug(`String input contains unusual characters in ${fieldName}: ${value}`);
+      this.configManager.logIfDebug(
+        `String input contains unusual characters in ${fieldName}: ${value}`
+      );
     }
   }
 
@@ -797,8 +995,15 @@ export class LifeUpClient {
     // Background settings
     this.appendIfDefined(params, 'background_url', request.background_url);
     this.appendIfDefined(params, 'background_alpha', request.background_alpha);
-    this.appendIfDefined(params, 'enable_outline', request.enable_outline, (val) => val ? 'true' : 'false');
-    this.appendIfDefined(params, 'use_light_remark_text_color', request.use_light_remark_text_color, (val) => val ? 'true' : 'false');
+    this.appendIfDefined(params, 'enable_outline', request.enable_outline, (val) =>
+      val ? 'true' : 'false'
+    );
+    this.appendIfDefined(
+      params,
+      'use_light_remark_text_color',
+      request.use_light_remark_text_color,
+      (val) => (val ? 'true' : 'false')
+    );
 
     // Item rewards
     this.appendIfDefined(params, 'item_id', request.item_id);
@@ -807,13 +1012,17 @@ export class LifeUpClient {
     this.appendIfDefined(params, 'items', request.items, (val) => JSON.stringify(val));
 
     // Other flags
-    this.appendIfDefined(params, 'auto_use_item', request.auto_use_item, (val) => val ? 'true' : 'false');
-    this.appendIfDefined(params, 'frozen', request.frozen, (val) => val ? 'true' : 'false');
+    this.appendIfDefined(params, 'auto_use_item', request.auto_use_item, (val) =>
+      val ? 'true' : 'false'
+    );
+    this.appendIfDefined(params, 'frozen', request.frozen, (val) => (val ? 'true' : 'false'));
 
     // Count task parameters
     this.appendIfDefined(params, 'task_type', request.task_type);
     this.appendIfDefined(params, 'target_times', request.target_times);
-    this.appendIfDefined(params, 'is_affect_shop_reward', request.is_affect_shop_reward, (val) => val ? 'true' : 'false');
+    this.appendIfDefined(params, 'is_affect_shop_reward', request.is_affect_shop_reward, (val) =>
+      val ? 'true' : 'false'
+    );
 
     return this.buildFinalUrl(LIFEUP_URL_SCHEMES.TASK_EDIT, params);
   }
@@ -848,17 +1057,23 @@ export class LifeUpClient {
     this.appendIfDefined(params, 'price', request.price);
     this.appendIfDefined(params, 'stock_number', request.stock_number);
     this.appendIfDefined(params, 'action_text', request.action_text);
-    this.appendIfDefined(params, 'disable_purchase', request.disable_purchase, (val) => val ? 'true' : 'false');
-    this.appendIfDefined(params, 'disable_use', request.disable_use, (val) => val ? 'true' : 'false');
+    this.appendIfDefined(params, 'disable_purchase', request.disable_purchase, (val) =>
+      val ? 'true' : 'false'
+    );
+    this.appendIfDefined(params, 'disable_use', request.disable_use, (val) =>
+      val ? 'true' : 'false'
+    );
     this.appendIfDefined(params, 'category', request.category);
     this.appendIfDefined(params, 'order', request.order);
 
     // JSON parameters
-    this.appendIfDefined(params, 'purchase_limit', request.purchase_limit, (val) => JSON.stringify(val));
+    this.appendIfDefined(params, 'purchase_limit', request.purchase_limit, (val) =>
+      JSON.stringify(val)
+    );
     this.appendIfDefined(params, 'effects', request.effects, (val) => JSON.stringify(val));
 
     this.appendIfDefined(params, 'own_number', request.own_number);
-    this.appendIfDefined(params, 'unlist', request.unlist, (val) => val ? 'true' : 'false');
+    this.appendIfDefined(params, 'unlist', request.unlist, (val) => (val ? 'true' : 'false'));
 
     return this.buildFinalUrl(LIFEUP_URL_SCHEMES.ITEM, params);
   }
@@ -893,8 +1108,12 @@ export class LifeUpClient {
     this.appendIfDefined(params, 'stock_number_type', request.stock_number_type);
 
     // Boolean flags
-    this.appendIfDefined(params, 'disable_purchase', request.disable_purchase, (val) => val ? 'true' : 'false');
-    this.appendIfDefined(params, 'disable_use', request.disable_use, (val) => val ? 'true' : 'false');
+    this.appendIfDefined(params, 'disable_purchase', request.disable_purchase, (val) =>
+      val ? 'true' : 'false'
+    );
+    this.appendIfDefined(params, 'disable_use', request.disable_use, (val) =>
+      val ? 'true' : 'false'
+    );
 
     // Other properties
     this.appendIfDefined(params, 'action_text', request.action_text);
@@ -902,11 +1121,13 @@ export class LifeUpClient {
 
     // JSON parameters
     this.appendIfDefined(params, 'effects', request.effects, (val) => JSON.stringify(val));
-    this.appendIfDefined(params, 'purchase_limit', request.purchase_limit, (val) => JSON.stringify(val));
+    this.appendIfDefined(params, 'purchase_limit', request.purchase_limit, (val) =>
+      JSON.stringify(val)
+    );
 
     this.appendIfDefined(params, 'category_id', request.category_id);
     this.appendIfDefined(params, 'order', request.order);
-    this.appendIfDefined(params, 'unlist', request.unlist, (val) => val ? 'true' : 'false');
+    this.appendIfDefined(params, 'unlist', request.unlist, (val) => (val ? 'true' : 'false'));
 
     return this.buildFinalUrl(LIFEUP_URL_SCHEMES.ITEM, params);
   }
@@ -934,7 +1155,7 @@ export class LifeUpClient {
     this.appendIfDefined(params, 'item_name', request.item_name);
 
     // Optional flags
-    this.appendIfDefined(params, 'silent', request.silent, (val) => val ? 'true' : 'false');
+    this.appendIfDefined(params, 'silent', request.silent, (val) => (val ? 'true' : 'false'));
 
     return this.buildFinalUrl(LIFEUP_URL_SCHEMES.PENALTY, params);
   }
@@ -961,7 +1182,7 @@ export class LifeUpClient {
     this.appendIfDefined(params, 'order', request.order);
     this.appendIfDefined(params, 'status', request.status);
     this.appendIfDefined(params, 'exp', request.exp);
-    this.appendIfDefined(params, 'delete', request.delete, (val) => val ? 'true' : 'false');
+    this.appendIfDefined(params, 'delete', request.delete, (val) => (val ? 'true' : 'false'));
 
     return this.buildFinalUrl(LIFEUP_URL_SCHEMES.SKILL, params);
   }
@@ -1004,8 +1225,29 @@ export class LifeUpClient {
 
   /**
    * Create multiple subtasks for a task (batch operation)
-   * Used internally when creating task with inline subtasks
-   * Returns both successful creations and any failures
+   * Used internally when creating task with inline subtasks.
+   * Processes subtasks sequentially with rate limiting to preserve order and avoid API overload.
+   *
+   * @param parentTaskId - The ID of the parent task
+   * @param subtasks - Array of subtask definitions to create
+   * @returns Batch result containing successes and failures arrays for full transparency
+   *
+   * @remarks
+   * - Subtasks are created sequentially (not in parallel) to preserve order
+   * - 50ms delay is added between each subtask creation to avoid overwhelming the API
+   * - Partial success is allowed - some subtasks may fail while others succeed
+   * - For n subtasks, total time ≈ (n-1) * 50ms + network latency
+   * - Complexity: O(n) where n is the number of subtasks
+   *
+   * @example
+   * ```typescript
+   * const result = await lifeupClient['createSubtasksBatch'](123, [
+   *   { todo: 'First step', exp: 10 },
+   *   { todo: 'Second step', exp: 20 }
+   * ]);
+   * // result.successes contains successfully created subtasks
+   * // result.failures contains any subtasks that failed to create
+   * ```
    */
   private async createSubtasksBatch(
     parentTaskId: number,
@@ -1015,7 +1257,10 @@ export class LifeUpClient {
     const failures: Array<{ subtask: Types.SubtaskDefinition; error: string }> = [];
 
     // Create subtasks sequentially to preserve order
-    for (const subtask of subtasks) {
+    // Add rate limiting to avoid overwhelming the API (50ms delay between creations)
+    const RATE_LIMIT_MS = 50;
+    for (let i = 0; i < subtasks.length; i++) {
+      const subtask = subtasks[i];
       try {
         const request: Types.CreateSubtaskRequest = {
           main_id: parentTaskId,
@@ -1031,6 +1276,11 @@ export class LifeUpClient {
           error: errorMessage,
         });
         // Continue with remaining subtasks - allow partial success
+      }
+
+      // Add delay between subtask creations (except after the last one)
+      if (i < subtasks.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_MS));
       }
     }
 
@@ -1091,7 +1341,9 @@ export class LifeUpClient {
     }
 
     // Boolean flags
-    this.appendIfDefined(params, 'auto_use_item', request.auto_use_item, (val) => val ? 'true' : 'false');
+    this.appendIfDefined(params, 'auto_use_item', request.auto_use_item, (val) =>
+      val ? 'true' : 'false'
+    );
 
     // Item rewards - single item
     this.appendIfDefined(params, 'item_id', request.item_id);

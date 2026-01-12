@@ -27,12 +27,12 @@ export class ErrorHandler {
         `Connection refused at ${baseUrl}`,
         'CONNECTION_REFUSED',
         `LifeUp server is not reachable at ${baseUrl}. Please ensure:\n` +
-        `1. LifeUp app is running on your Android device\n` +
-        `2. Your devices are connected to the same WiFi network\n` +
-        `3. The IP address is correct (current: ${config.host}:${config.port})\n\n` +
-        `You can update the IP by setting environment variables:\n` +
-        `  LIFEUP_HOST=<new-ip>\n` +
-        `  LIFEUP_PORT=<port>`,
+          `1. LifeUp app is running on your Android device\n` +
+          `2. Your devices are connected to the same WiFi network\n` +
+          `3. The IP address is correct (current: ${config.host}:${config.port})\n\n` +
+          `You can update the IP by setting environment variables:\n` +
+          `  LIFEUP_HOST=<new-ip>\n` +
+          `  LIFEUP_PORT=<port>`,
         true
       );
     }
@@ -42,7 +42,7 @@ export class ErrorHandler {
         `Cannot resolve hostname ${config.host}`,
         'HOSTNAME_RESOLUTION_FAILED',
         `Cannot resolve the LifeUp server address: ${config.host}. ` +
-        `Please check that the IP address is correct or try using a different hostname.`,
+          `Please check that the IP address is correct or try using a different hostname.`,
         true
       );
     }
@@ -52,7 +52,7 @@ export class ErrorHandler {
         `Request timeout to ${baseUrl}`,
         'REQUEST_TIMEOUT',
         `LifeUp server is taking too long to respond. It may be under heavy load or the connection may be unstable. ` +
-        `Try again in a moment.`,
+          `Try again in a moment.`,
         true
       );
     }
@@ -74,7 +74,7 @@ export class ErrorHandler {
         'Unauthorized: Invalid API token',
         'UNAUTHORIZED',
         `API token is invalid. Please check your LifeUp settings and ensure the API token matches ` +
-        `the LIFEUP_API_TOKEN environment variable.`,
+          `the LIFEUP_API_TOKEN environment variable.`,
         true
       );
     }
@@ -96,7 +96,7 @@ export class ErrorHandler {
         `Content provider error: ${errorMsg}`,
         'CONTENT_PROVIDER_ERROR',
         `LifeUp feature not available: ${errorMsg}. This may indicate the feature is not available ` +
-        `in your LifeUp version or is not properly configured.`,
+          `in your LifeUp version or is not properly configured.`,
         false
       );
     }

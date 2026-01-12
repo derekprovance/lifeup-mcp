@@ -29,10 +29,11 @@ export class ConfigManager {
 
   constructor(overrides?: Partial<LifeUpConfig>) {
     const host = overrides?.host || process.env.LIFEUP_HOST || DEFAULT_CONFIG.HOST;
-    const port = overrides?.port || parseInt(process.env.LIFEUP_PORT || String(DEFAULT_CONFIG.PORT), 10);
+    const port =
+      overrides?.port || parseInt(process.env.LIFEUP_PORT || String(DEFAULT_CONFIG.PORT), 10);
     const apiToken = overrides?.apiToken || process.env.LIFEUP_API_TOKEN;
-    const debug = overrides?.debug ?? (process.env.DEBUG === 'true');
-    const safeMode = overrides?.safeMode ?? (process.env.SAFE_MODE === 'true');
+    const debug = overrides?.debug ?? process.env.DEBUG === 'true';
+    const safeMode = overrides?.safeMode ?? process.env.SAFE_MODE === 'true';
 
     this.config = {
       host,

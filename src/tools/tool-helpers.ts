@@ -17,11 +17,11 @@ export async function ensureServerHealthy(): Promise<void> {
       'LifeUp server is unreachable',
       'SERVER_UNREACHABLE',
       'The LifeUp server is not responding. Please:\n' +
-      '1. Ensure LifeUp is running on your Android device\n' +
-      '2. Check your WiFi connection\n' +
-      `3. Verify the IP address is correct (current: ${configManager.getConfig().host})\n\n` +
-      'If the IP has changed, update it with:\n' +
-      '  LIFEUP_HOST=<new-ip>',
+        '1. Ensure LifeUp is running on your Android device\n' +
+        '2. Check your WiFi connection\n' +
+        `3. Verify the IP address is correct (current: ${configManager.getConfig().host})\n\n` +
+        'If the IP has changed, update it with:\n' +
+        '  LIFEUP_HOST=<new-ip>',
       true
     );
   }

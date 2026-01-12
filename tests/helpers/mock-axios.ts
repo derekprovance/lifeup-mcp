@@ -44,11 +44,7 @@ export function createMockAxios(overrides?: Partial<AxiosInstance>): AxiosInstan
 /**
  * Creates a successful API response
  */
-export function mockSuccessResponse<T>(
-  data: T,
-  code = 200,
-  message = 'Success'
-): AxiosResponse {
+export function mockSuccessResponse<T>(data: T, code = 200, message = 'Success'): AxiosResponse {
   return {
     data: {
       code,
@@ -65,11 +61,7 @@ export function mockSuccessResponse<T>(
 /**
  * Creates an error API response
  */
-export function mockErrorResponse(
-  code: number,
-  message: string,
-  status?: number
-): AxiosResponse {
+export function mockErrorResponse(code: number, message: string, status?: number): AxiosResponse {
   return {
     data: {
       code,

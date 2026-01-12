@@ -158,6 +158,12 @@ export interface CreateTaskRequest {
   subtasks?: SubtaskDefinition[]; // Array of subtasks to create with the main task
 }
 
+// Task Creation API Response
+export interface AddTaskApiResponse {
+  task_id: number;
+  task_gid: number;
+}
+
 // Subtask API Response
 export interface SubtaskApiResponse {
   main_task_id: number;

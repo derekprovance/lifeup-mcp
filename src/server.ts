@@ -2,9 +2,7 @@
  * MCP Server implementation for LifeUp Cloud API
  */
 
-import {
-  Server,
-} from '@modelcontextprotocol/sdk/server/index.js';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, CallToolRequest } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
@@ -17,11 +15,7 @@ import { MutationTools } from './tools/mutation-tools.js';
 import { configManager } from './config/config.js';
 
 // Tools that create new entities - allowed in SAFE_MODE
-const CREATE_TOOLS = [
-  'create_task',
-  'create_achievement',
-  'add_shop_item',
-] as const;
+const CREATE_TOOLS = ['create_task', 'create_achievement', 'add_shop_item'] as const;
 
 // Tools that modify or delete existing entities - blocked in SAFE_MODE
 const EDIT_DELETE_TOOLS = [
@@ -35,7 +29,7 @@ const EDIT_DELETE_TOOLS = [
   'edit_subtask',
 ] as const;
 
-type EditDeleteTool = typeof EDIT_DELETE_TOOLS[number];
+type EditDeleteTool = (typeof EDIT_DELETE_TOOLS)[number];
 
 // Type guard to safely check if a tool name is an edit/delete tool
 function isEditDeleteTool(toolName: string): toolName is EditDeleteTool {
@@ -71,14 +65,11 @@ class LifeUpServer {
     // Register tools/list handler
     // The MCP SDK's setRequestHandler has complex generic types that TypeScript struggles with
     // We use a cast to Function to bypass type checking while maintaining runtime safety
-    (this.server.setRequestHandler as unknown as Function)(
-      ListToolsSchema,
-      async () => {
-        return {
-          tools: this.getTools(),
-        };
-      }
-    );
+    (this.server.setRequestHandler as unknown as Function)(ListToolsSchema, async () => {
+      return {
+        tools: this.getTools(),
+      };
+    });
 
     // Register tools/call handler
     (this.server.setRequestHandler as unknown as Function)(
@@ -92,10 +83,11 @@ class LifeUpServer {
             content: [
               {
                 type: 'text',
-                text: `❌ Operation blocked: "${request.params.name}" is disabled in SAFE_MODE.\n\n` +
-                      `This tool modifies or deletes existing data. SAFE_MODE allows read operations and creating new entities ` +
-                      `(create_task, create_achievement, add_shop_item), but blocks modifications and deletions.\n\n` +
-                      `To use this tool, set SAFE_MODE=false in your .env file and restart the server.`,
+                text:
+                  `❌ Operation blocked: "${request.params.name}" is disabled in SAFE_MODE.\n\n` +
+                  `This tool modifies or deletes existing data. SAFE_MODE allows read operations and creating new entities ` +
+                  `(create_task, create_achievement, add_shop_item), but blocks modifications and deletions.\n\n` +
+                  `To use this tool, set SAFE_MODE=false in your .env file and restart the server.`,
               },
             ],
             isError: true,
@@ -267,22 +259,26 @@ class LifeUpServer {
             },
             exp: {
               type: 'number',
-              description: 'Experience points reward (optional, non-negative). If specified, must provide skillIds to indicate which attributes receive the XP. Omit this to use auto-calculation based on importance/difficulty.',
+              description:
+                'Experience points reward (optional, non-negative). If specified, must provide skillIds to indicate which attributes receive the XP. Omit this to use auto-calculation based on importance/difficulty.',
             },
             skillIds: {
               type: 'array',
               items: {
                 type: 'number',
               },
-              description: 'Skill/attribute IDs to receive XP rewards. Required when setting exp parameter. Supports multiple values (e.g., [1, 2, 3]). For auto XP mode, omit this and use importance/difficulty instead.',
+              description:
+                'Skill/attribute IDs to receive XP rewards. Required when setting exp parameter. Supports multiple values (e.g., [1, 2, 3]). For auto XP mode, omit this and use importance/difficulty instead.',
             },
             importance: {
               type: 'number',
-              description: 'Task importance level (1-4). Used for auto XP calculation when exp is omitted. Higher values increase auto-calculated XP.',
+              description:
+                'Task importance level (1-4). Used for auto XP calculation when exp is omitted. Higher values increase auto-calculated XP.',
             },
             difficulty: {
               type: 'number',
-              description: 'Task difficulty level (1-4). Used for auto XP calculation when exp is omitted. Higher values increase auto-calculated XP.',
+              description:
+                'Task difficulty level (1-4). Used for auto XP calculation when exp is omitted. Higher values increase auto-calculated XP.',
             },
             coin: {
               type: 'number',
@@ -302,19 +298,23 @@ class LifeUpServer {
             },
             auto_use_item: {
               type: 'boolean',
-              description: 'Automatically use/consume item rewards when task is completed (optional, defaults to false)',
+              description:
+                'Automatically use/consume item rewards when task is completed (optional, defaults to false)',
             },
             task_type: {
               type: 'number',
-              description: 'Task type: 0=normal (default), 1=count task, 2=negative task, 3=API task. Count tasks can be completed multiple times. Requires LifeUp v1.99.1+',
+              description:
+                'Task type: 0=normal (default), 1=count task, 2=negative task, 3=API task. Count tasks can be completed multiple times. Requires LifeUp v1.99.1+',
             },
             target_times: {
               type: 'number',
-              description: 'Target count for count tasks (required when task_type=1, must be > 0). Example: Set to 5 to create a task that needs to be completed 5 times.',
+              description:
+                'Target count for count tasks (required when task_type=1, must be > 0). Example: Set to 5 to create a task that needs to be completed 5 times.',
             },
             is_affect_shop_reward: {
               type: 'boolean',
-              description: 'Whether count affects shop item reward calculations (optional, only valid when task_type=1, defaults to false)',
+              description:
+                'Whether count affects shop item reward calculations (optional, only valid when task_type=1, defaults to false)',
             },
             subtasks: {
               type: 'array',
@@ -376,7 +376,8 @@ class LifeUpServer {
                 },
                 required: ['todo'],
               },
-              description: 'Array of subtasks to create with the main task (optional, max 50 subtasks)',
+              description:
+                'Array of subtasks to create with the main task (optional, max 50 subtasks)',
             },
           },
           required: ['name'],
@@ -497,7 +498,8 @@ class LifeUpServer {
             },
             main_gid: {
               type: 'number',
-              description: 'Parent task group ID (one of main_id, main_gid, or main_name is required)',
+              description:
+                'Parent task group ID (one of main_id, main_gid, or main_name is required)',
             },
             main_name: {
               type: 'string',
@@ -529,7 +531,8 @@ class LifeUpServer {
             },
             auto_use_item: {
               type: 'boolean',
-              description: 'Automatically use/consume item rewards when subtask is completed (optional)',
+              description:
+                'Automatically use/consume item rewards when subtask is completed (optional)',
             },
             item_id: {
               type: 'number',
@@ -574,7 +577,8 @@ class LifeUpServer {
             },
             main_gid: {
               type: 'number',
-              description: 'Parent task group ID (one of main_id, main_gid, or main_name is required)',
+              description:
+                'Parent task group ID (one of main_id, main_gid, or main_name is required)',
             },
             main_name: {
               type: 'string',
@@ -582,15 +586,18 @@ class LifeUpServer {
             },
             edit_id: {
               type: 'number',
-              description: 'Subtask ID to edit (one of edit_id, edit_gid, or edit_name is required)',
+              description:
+                'Subtask ID to edit (one of edit_id, edit_gid, or edit_name is required)',
             },
             edit_gid: {
               type: 'number',
-              description: 'Subtask group ID to edit (one of edit_id, edit_gid, or edit_name is required)',
+              description:
+                'Subtask group ID to edit (one of edit_id, edit_gid, or edit_name is required)',
             },
             edit_name: {
               type: 'string',
-              description: 'Subtask name to edit (one of edit_id, edit_gid, or edit_name is required)',
+              description:
+                'Subtask name to edit (one of edit_id, edit_gid, or edit_name is required)',
             },
             todo: {
               type: 'string',
@@ -628,7 +635,8 @@ class LifeUpServer {
             },
             auto_use_item: {
               type: 'boolean',
-              description: 'Automatically use/consume item rewards when subtask is completed (optional)',
+              description:
+                'Automatically use/consume item rewards when subtask is completed (optional)',
             },
             item_id: {
               type: 'number',
@@ -759,7 +767,8 @@ class LifeUpServer {
           properties: {
             searchQuery: {
               type: 'string',
-              description: 'Search for items containing this text in name or description (optional)',
+              description:
+                'Search for items containing this text in name or description (optional)',
             },
             categoryId: {
               type: 'number',
@@ -800,7 +809,8 @@ class LifeUpServer {
             },
             conditions_json: {
               type: 'array',
-              description: 'Unlock conditions as JSON array (optional). Format: [{"type":7,"target":1000000}]. ' +
+              description:
+                'Unlock conditions as JSON array (optional). Format: [{"type":7,"target":1000000}]. ' +
                 'Common types: 0=task completion, 3=pomodoro, 6=daily streak, 7=coins, 13=skill level, 14=life level',
               items: {
                 type: 'object',
@@ -814,7 +824,8 @@ class LifeUpServer {
             },
             exp: {
               type: 'number',
-              description: 'Experience points reward (optional). IMPORTANT: Must specify skills array to apply XP to attributes.',
+              description:
+                'Experience points reward (optional). IMPORTANT: Must specify skills array to apply XP to attributes.',
             },
             coin: {
               type: 'number',
@@ -827,7 +838,8 @@ class LifeUpServer {
             skills: {
               type: 'array',
               items: { type: 'number' },
-              description: 'Skill/attribute IDs to receive XP rewards. Required when setting exp parameter. Without skills, XP cannot be applied.',
+              description:
+                'Skill/attribute IDs to receive XP rewards. Required when setting exp parameter. Without skills, XP cannot be applied.',
             },
             items: {
               type: 'array',
@@ -905,7 +917,8 @@ class LifeUpServer {
             },
             exp: {
               type: 'number',
-              description: 'Experience reward (optional). IMPORTANT: Must specify skills array to apply XP to attributes.',
+              description:
+                'Experience reward (optional). IMPORTANT: Must specify skills array to apply XP to attributes.',
             },
             coin: {
               type: 'number',
@@ -924,7 +937,8 @@ class LifeUpServer {
             skills: {
               type: 'array',
               items: { type: 'number' },
-              description: 'Skill/attribute IDs to receive XP rewards. Required when setting exp parameter (replaces existing). Without skills, XP cannot be applied.',
+              description:
+                'Skill/attribute IDs to receive XP rewards. Required when setting exp parameter (replaces existing). Without skills, XP cannot be applied.',
             },
             items: {
               type: 'array',
@@ -1001,7 +1015,8 @@ class LifeUpServer {
             },
             coin: {
               type: 'number',
-              description: 'Coin reward upon completion. Use coin_set_type to control whether value is absolute or relative.',
+              description:
+                'Coin reward upon completion. Use coin_set_type to control whether value is absolute or relative.',
             },
             coin_var: {
               type: 'number',
@@ -1010,23 +1025,27 @@ class LifeUpServer {
             coin_set_type: {
               type: 'string',
               enum: ['absolute', 'relative'],
-              description: 'How to set coin value: absolute (replace current value) or relative (add/subtract from current value). ' +
-                           'Default is absolute.',
+              description:
+                'How to set coin value: absolute (replace current value) or relative (add/subtract from current value). ' +
+                'Default is absolute.',
             },
             exp: {
               type: 'number',
-              description: 'Experience points reward (must be >= 0). Use exp_set_type to control whether value is absolute (replace) or relative (add/subtract). Requires skills when setting. Omit to use auto-calculation based on importance/difficulty.',
+              description:
+                'Experience points reward (must be >= 0). Use exp_set_type to control whether value is absolute (replace) or relative (add/subtract). Requires skills when setting. Omit to use auto-calculation based on importance/difficulty.',
             },
             exp_set_type: {
               type: 'string',
               enum: ['absolute', 'relative'],
-              description: 'How to set exp value: absolute (replace current value) or relative (add/subtract from current value). ' +
-                           'Default is absolute.',
+              description:
+                'How to set exp value: absolute (replace current value) or relative (add/subtract from current value). ' +
+                'Default is absolute.',
             },
             skills: {
               type: 'array',
               items: { type: 'number' },
-              description: 'Skill/attribute IDs to receive XP rewards. Required when setting exp parameter. Supports multiple values (e.g., [1, 2, 3]). For auto XP mode, omit exp and use importance/difficulty instead.',
+              description:
+                'Skill/attribute IDs to receive XP rewards. Required when setting exp parameter. Supports multiple values (e.g., [1, 2, 3]). For auto XP mode, omit exp and use importance/difficulty instead.',
             },
             category: {
               type: 'number',
@@ -1038,11 +1057,13 @@ class LifeUpServer {
             },
             importance: {
               type: 'number',
-              description: 'Importance level (1-4). Used for auto XP calculation when exp is omitted. Higher values increase auto-calculated XP.',
+              description:
+                'Importance level (1-4). Used for auto XP calculation when exp is omitted. Higher values increase auto-calculated XP.',
             },
             difficulty: {
               type: 'number',
-              description: 'Difficulty level (1-4). Used for auto XP calculation when exp is omitted. Higher values increase auto-calculated XP.',
+              description:
+                'Difficulty level (1-4). Used for auto XP calculation when exp is omitted. Higher values increase auto-calculated XP.',
             },
             deadline: {
               type: 'number',
@@ -1073,7 +1094,8 @@ class LifeUpServer {
             },
             task_type: {
               type: 'number',
-              description: 'Task type: 0=normal, 1=count task, 2=negative task, 3=API task. Set to 1 to convert task to count task.',
+              description:
+                'Task type: 0=normal, 1=count task, 2=negative task, 3=API task. Set to 1 to convert task to count task.',
             },
             target_times: {
               type: 'number',
@@ -1081,7 +1103,8 @@ class LifeUpServer {
             },
             is_affect_shop_reward: {
               type: 'boolean',
-              description: 'Whether count affects shop item reward calculations (only valid when task_type=1)',
+              description:
+                'Whether count affects shop item reward calculations (only valid when task_type=1)',
             },
           },
         },
@@ -1136,11 +1159,16 @@ class LifeUpServer {
             },
             effects: {
               type: 'array',
-              description: 'Item usage effects. Example: [{"type":2,"info":{"min":100,"max":200}}] for coin reward',
+              description:
+                'Item usage effects. Example: [{"type":2,"info":{"min":100,"max":200}}] for coin reward',
               items: {
                 type: 'object',
                 properties: {
-                  type: { type: 'number', description: 'Effect type: 0=none, 1=unusable, 2=increase coins, 3=decrease coins, 4=increase exp, 5=decrease exp, 6=synthesis, 7=loot box, 8=countdown, 9=web link' },
+                  type: {
+                    type: 'number',
+                    description:
+                      'Effect type: 0=none, 1=unusable, 2=increase coins, 3=decrease coins, 4=increase exp, 5=decrease exp, 6=synthesis, 7=loot box, 8=countdown, 9=web link',
+                  },
                   info: { type: 'object', description: 'Effect parameters (varies by type)' },
                 },
               },
@@ -1209,7 +1237,8 @@ class LifeUpServer {
             own_number_type: {
               type: 'string',
               enum: ['absolute', 'relative'],
-              description: 'Owned quantity adjustment: absolute=set directly, relative=add/subtract',
+              description:
+                'Owned quantity adjustment: absolute=set directly, relative=add/subtract',
             },
             disable_purchase: {
               type: 'boolean',
@@ -1252,7 +1281,8 @@ class LifeUpServer {
             },
             number: {
               type: 'number',
-              description: 'Amount to penalize (max: 999999 for coin, 99999 for exp, 999 for items)',
+              description:
+                'Amount to penalize (max: 999999 for coin, 99999 for exp, 999 for items)',
             },
             skills: {
               type: 'array',
@@ -1265,7 +1295,8 @@ class LifeUpServer {
             },
             item_name: {
               type: 'string',
-              description: 'Item name for fuzzy match (only for item type, one of item_id or item_name required)',
+              description:
+                'Item name for fuzzy match (only for item type, one of item_id or item_name required)',
             },
             silent: {
               type: 'boolean',
@@ -1318,7 +1349,7 @@ class LifeUpServer {
 
     // Filter out edit/delete tools if in safe mode (create tools still allowed)
     if (configManager.isSafeMode()) {
-      return allTools.filter(tool => !isEditDeleteTool(tool.name));
+      return allTools.filter((tool) => !isEditDeleteTool(tool.name));
     }
 
     return allTools;
@@ -1357,7 +1388,7 @@ class LifeUpServer {
     if (!isHealthy) {
       configManager.logIfDebug(
         `Warning: LifeUp server unreachable at startup (${config.baseUrl}). ` +
-        'Tools will report connection errors until the device is reachable.'
+          'Tools will report connection errors until the device is reachable.'
       );
       // Don't block startup - let Claude know about connection issues through tool responses
     } else {

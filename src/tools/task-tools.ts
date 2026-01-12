@@ -298,7 +298,8 @@ export class TaskTools {
 
       // Apply filters
       if (validated.status !== 'all') {
-        const statusCode = validated.status === 'active' ? TASK_STATUS.ACTIVE : TASK_STATUS.COMPLETED;
+        const statusCode =
+          validated.status === 'active' ? TASK_STATUS.ACTIVE : TASK_STATUS.COMPLETED;
         tasks = tasks.filter((t) => t.status === statusCode);
       }
 
@@ -314,7 +315,8 @@ export class TaskTools {
 
       if (validated.deadlineBefore) {
         tasks = tasks.filter(
-          (t) => (t.deadline || t.due_date) && (t.deadline || t.due_date)! < validated.deadlineBefore!
+          (t) =>
+            (t.deadline || t.due_date) && (t.deadline || t.due_date)! < validated.deadlineBefore!
         );
       }
 
@@ -428,7 +430,7 @@ export class TaskTools {
 
       // Fetch all tasks and find the requested one
       const tasks = await lifeupClient.getAllTasks();
-      const task = tasks.find(t => t.id === validated.id);
+      const task = tasks.find((t) => t.id === validated.id);
 
       if (!task) {
         return `Task with ID ${validated.id} not found. Use list_all_tasks or search_tasks to find available task IDs.`;
@@ -462,7 +464,11 @@ export class TaskTools {
         `**Subtask Group ID**: ${result.subtask_gid}\n` +
         `**Parent Task ID**: ${result.main_task_id}\n` +
         (validated.exp ? `**Experience**: ${validated.exp} XP\n` : '') +
-        (validated.coin ? `**Coin Reward**: ${validated.coin}` + (validated.coin_var ? ` (+/- ${validated.coin_var})` : '') + `\n` : '')
+        (validated.coin
+          ? `**Coin Reward**: ${validated.coin}` +
+            (validated.coin_var ? ` (+/- ${validated.coin_var})` : '') +
+            `\n`
+          : '')
       );
     } catch (error) {
       return handleToolError(error, 'creating subtask');
@@ -486,8 +492,12 @@ export class TaskTools {
         `**Subtask ID**: ${result.subtask_id}\n` +
         `**Parent Task ID**: ${result.main_task_id}\n` +
         (validated.todo ? `**Updated Content**: ${validated.todo}\n` : '') +
-        (validated.exp !== undefined ? `**Experience**: ${validated.exp} XP (${validated.exp_set_type || 'absolute'})\n` : '') +
-        (validated.coin !== undefined ? `**Coin**: ${validated.coin} (${validated.coin_set_type || 'absolute'})\n` : '')
+        (validated.exp !== undefined
+          ? `**Experience**: ${validated.exp} XP (${validated.exp_set_type || 'absolute'})\n`
+          : '') +
+        (validated.coin !== undefined
+          ? `**Coin**: ${validated.coin} (${validated.coin_set_type || 'absolute'})\n`
+          : '')
       );
     } catch (error) {
       return handleToolError(error, 'editing subtask');
