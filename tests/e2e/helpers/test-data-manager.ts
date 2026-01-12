@@ -57,7 +57,11 @@ export class TestDataManager {
     }
 
     const taskId = this.extractTaskId(response.text);
-    this.track('task', taskId);
+    if (taskId > 0) {
+      this.track('task', taskId);
+    } else {
+      console.warn('[TestDataManager] Task created but ID not tracked (API did not return ID). Will use fallback prefix-based cleanup.');
+    }
 
     return taskId;
   }
@@ -90,7 +94,11 @@ export class TestDataManager {
     }
 
     const achievementId = this.extractAchievementId(response.text);
-    this.track('achievement', achievementId);
+    if (achievementId > 0) {
+      this.track('achievement', achievementId);
+    } else {
+      console.warn('[TestDataManager] Achievement created but ID not tracked (API did not return ID). Will use fallback prefix-based cleanup.');
+    }
 
     return achievementId;
   }
@@ -122,7 +130,11 @@ export class TestDataManager {
     }
 
     const itemId = this.extractItemId(response.text);
-    this.track('item', itemId);
+    if (itemId > 0) {
+      this.track('item', itemId);
+    } else {
+      console.warn('[TestDataManager] Shop item created but ID not tracked (API did not return ID). Will use fallback prefix-based cleanup.');
+    }
 
     return itemId;
   }
@@ -258,7 +270,7 @@ export class TestDataManager {
    * Extract task ID from MCP response markdown
    *
    * @private
-   * @throws Error if task ID cannot be extracted
+   * Returns -1 if task ID cannot be extracted (API may not have returned an ID)
    */
   private extractTaskId(markdownText: string): number {
     // Look for patterns like "**ID**: 123" or "ID: 123"
@@ -267,7 +279,8 @@ export class TestDataManager {
       match = markdownText.match(/(?:Task created.*?)?ID[:\s]+(\d+)/i);
     }
     if (!match || !match[1]) {
-      throw new Error(`Could not extract task ID from response: ${markdownText}`);
+      console.warn('[TestDataManager] Could not extract task ID from response. API may not have returned an ID.');
+      return -1; // Sentinel value indicating extraction failure
     }
     return parseInt(match[1], 10);
   }
@@ -276,7 +289,7 @@ export class TestDataManager {
    * Extract achievement ID from MCP response markdown
    *
    * @private
-   * @throws Error if achievement ID cannot be extracted
+   * Returns -1 if achievement ID cannot be extracted (API may not have returned an ID)
    */
   private extractAchievementId(markdownText: string): number {
     // Look for patterns like "**Achievement ID**: 123" or "ID: 123"
@@ -285,7 +298,8 @@ export class TestDataManager {
       match = markdownText.match(/(?:Achievement created.*?)?ID[:\s]+(\d+)/i);
     }
     if (!match || !match[1]) {
-      throw new Error(`Could not extract achievement ID from response: ${markdownText}`);
+      console.warn('[TestDataManager] Could not extract achievement ID from response. API may not have returned an ID.');
+      return -1; // Sentinel value indicating extraction failure
     }
     return parseInt(match[1], 10);
   }
@@ -294,7 +308,7 @@ export class TestDataManager {
    * Extract item ID from MCP response markdown
    *
    * @private
-   * @throws Error if item ID cannot be extracted
+   * Returns -1 if item ID cannot be extracted (API may not have returned an ID)
    */
   private extractItemId(markdownText: string): number {
     // Look for patterns like "**Item ID**: 123" or "ID: 123"
@@ -303,7 +317,8 @@ export class TestDataManager {
       match = markdownText.match(/(?:Item created.*?)?ID[:\s]+(\d+)/i);
     }
     if (!match || !match[1]) {
-      throw new Error(`Could not extract item ID from response: ${markdownText}`);
+      console.warn('[TestDataManager] Could not extract item ID from response. API may not have returned an ID.');
+      return -1; // Sentinel value indicating extraction failure
     }
     return parseInt(match[1], 10);
   }

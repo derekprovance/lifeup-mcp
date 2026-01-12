@@ -34,10 +34,10 @@ describe('SAFE_MODE=true (Restrictive Mode)', () => {
     await client.stop();
   });
 
-  it('should list only 17 tools (14 read + 3 create)', async () => {
+  it('should list only 18 tools (15 read + 3 create)', async () => {
     const tools = await client.listTools();
 
-    expect(tools.length).toBe(17);
+    expect(tools.length).toBe(18);
   });
 
   it('should include all read-only tools', async () => {
@@ -247,6 +247,7 @@ describe('SAFE_MODE=false (Permissive Mode)', () => {
     const taskId = await testData.createTestTask({
       name: 'Edit Allowed Test',
       exp: 50,
+      skillIds: [1],
     });
 
     const response = await client.callTool('edit_task', {

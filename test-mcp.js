@@ -123,7 +123,7 @@ async function runSmokeTests() {
       name: 'create_task',
       arguments: {
         name: '[SMOKE-TEST] Test Task - Delete Me',
-        exp: 10,
+        coin: 10,
       },
     });
 
@@ -136,6 +136,10 @@ async function runSmokeTests() {
 
       // Extract task ID for cleanup
       const responseText = createResponse.content[0]?.text || '';
+      if (DEBUG) {
+        log('Full create_task response:');
+        log(responseText);
+      }
       const idMatch = responseText.match(/ID[:\s]+(\d+)/i);
 
       if (idMatch) {
