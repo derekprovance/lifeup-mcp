@@ -107,17 +107,14 @@ The server supports "safe mutations" - create/update/delete operations that requ
    - `edit_task` - Edit existing task properties (name, rewards, deadline, category, appearance). Supports absolute/relative value adjustments via exp_set_type and coin_set_type parameters.
    - `delete_task` - Permanently delete a task by its ID. ⚠️ This action cannot be undone. Blocked in SAFE_MODE. Requires explicit task ID to prevent accidental deletions.
 
-   **XP Parameter (Explicit vs Auto Mode):**
+   **XP Parameter:**
    - `exp` is optional. When specified, you must provide the `skillIds` (create_task) or `skills` (edit_task) array to indicate which attributes should receive the XP.
-   - **Auto Mode**: When `exp` is omitted AND both `importance` and `difficulty` are provided (1-4), LifeUp automatically calculates XP based on task difficulty and importance.
-   - When omitted without `importance`/`difficulty`:
+   - When omitted:
      - For `create_task`: XP defaults to 0
      - For `edit_task`: Task's existing XP value remains unchanged
    - Examples:
-     - `create_task(name: "Learn Rust", exp: 50, skillIds: [1, 2])` - Explicit: Sets XP to 50, applies to attributes 1 and 2
-     - `create_task(name: "Learn Rust", importance: 4, difficulty: 4)` - Auto: LifeUp auto-calculates XP based on difficulty/importance
-     - `edit_task(id: 1, exp: 75, skills: [1, 2])` - Explicit: Updates XP to 75, applies to attributes 1 and 2
-     - `edit_task(id: 1, importance: 3, difficulty: 3)` - Auto: Updates to auto-calculated XP based on difficulty/importance
+     - `create_task(name: "Learn Rust", exp: 50, skillIds: [1, 2])` - Sets XP to 50, applies to attributes 1 and 2
+     - `edit_task(id: 1, exp: 75, skills: [1, 2])` - Updates XP to 75, applies to attributes 1 and 2
 
    **Auto Use Items:**
    - Both `create_task` and `edit_task` support `auto_use_item` parameter (boolean, defaults to false)

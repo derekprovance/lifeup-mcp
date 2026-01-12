@@ -86,17 +86,6 @@ describe('LifeUpClient URL Building', () => {
       const url = (client as any).buildTaskUrl(request);
       expect(url).toContain('auto_use_item=true');
     });
-
-    it('should include importance and difficulty for auto-XP calculation', () => {
-      const request: Types.CreateTaskRequest = {
-        name: 'Important Task',
-        importance: 4,
-        difficulty: 3,
-      };
-      const url = (client as any).buildTaskUrl(request);
-      expect(url).toContain('importance=4');
-      expect(url).toContain('difficulty=3');
-    });
   });
 
   describe('buildAchievementUrl', () => {

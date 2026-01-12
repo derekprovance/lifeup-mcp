@@ -150,8 +150,6 @@ export interface CreateTaskRequest {
   skillIds?: number[];
   content?: string;
   auto_use_item?: boolean;
-  importance?: number; // 1-4, used for auto XP calculation when exp is omitted
-  difficulty?: number; // 1-4, used for auto XP calculation when exp is omitted
   task_type?: number; // 0=normal, 1=count, 2=negative, 3=API (requires LifeUp v1.99.1+)
   target_times?: number; // Target count for count tasks (required when task_type=1)
   is_affect_shop_reward?: boolean; // Whether count affects shop reward calculation (only valid when task_type=1)
@@ -324,8 +322,6 @@ export interface EditTaskRequest {
   skills?: number[];
   category?: number;
   frequency?: number;
-  importance?: number; // 1-4, used for auto XP calculation when exp is omitted
-  difficulty?: number; // 1-4, used for auto XP calculation when exp is omitted
   deadline?: number;
   remind_time?: number;
   start_time?: number;

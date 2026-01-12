@@ -170,80 +170,6 @@ describe('CreateTaskSchema', () => {
     });
   });
 
-  describe('auto XP mode (importance/difficulty)', () => {
-    it('accepts task with importance/difficulty but no exp (auto mode)', () => {
-      const result = CreateTaskSchema.parse({
-        name: 'Auto XP Task',
-        importance: 4,
-        difficulty: 3,
-      });
-      expect(result.exp).toBeUndefined();
-      expect(result.importance).toBe(4);
-      expect(result.difficulty).toBe(3);
-    });
-
-    it('accepts task with only importance (auto mode)', () => {
-      const result = CreateTaskSchema.parse({
-        name: 'Task',
-        importance: 3,
-      });
-      expect(result.importance).toBe(3);
-      expect(result.difficulty).toBeUndefined();
-    });
-
-    it('accepts task with only difficulty (auto mode)', () => {
-      const result = CreateTaskSchema.parse({
-        name: 'Task',
-        difficulty: 2,
-      });
-      expect(result.difficulty).toBe(2);
-      expect(result.importance).toBeUndefined();
-    });
-
-    it('rejects importance below 1', () => {
-      expect(() => CreateTaskSchema.parse({ name: 'Task', importance: 0 }))
-        .toThrow('Importance must be between 1 and 4');
-    });
-
-    it('rejects importance above 4', () => {
-      expect(() => CreateTaskSchema.parse({ name: 'Task', importance: 5 }))
-        .toThrow('Importance must be between 1 and 4');
-    });
-
-    it('rejects difficulty below 1', () => {
-      expect(() => CreateTaskSchema.parse({ name: 'Task', difficulty: 0 }))
-        .toThrow('Difficulty must be between 1 and 4');
-    });
-
-    it('rejects difficulty above 4', () => {
-      expect(() => CreateTaskSchema.parse({ name: 'Task', difficulty: 5 }))
-        .toThrow('Difficulty must be between 1 and 4');
-    });
-
-    it('still requires skillIds when exp is explicitly set (even with importance/difficulty)', () => {
-      expect(() => CreateTaskSchema.parse({
-        name: 'Task',
-        exp: 50,
-        importance: 3,
-        difficulty: 3,
-      })).toThrow('When exp is specified, skillIds must be provided as a non-empty array');
-    });
-
-    it('accepts exp + skillIds with importance/difficulty (explicit XP takes precedence)', () => {
-      const result = CreateTaskSchema.parse({
-        name: 'Task',
-        exp: 100,
-        skillIds: [1],
-        importance: 3,
-        difficulty: 3,
-      });
-      expect(result.exp).toBe(100);
-      expect(result.skillIds).toEqual([1]);
-      expect(result.importance).toBe(3);
-      expect(result.difficulty).toBe(3);
-    });
-  });
-
   describe('count task validation (task_type and target_times)', () => {
     it('accepts count task with valid task_type and target_times', () => {
       const result = CreateTaskSchema.parse({
@@ -919,8 +845,6 @@ describe('EditTaskSchema', () => {
         exp: 200,
         coin: 100,
         category: 2,
-        importance: 3,
-        difficulty: 2,
         color: '#FF6B6B',
         skills: [1, 2],
       };
@@ -967,16 +891,6 @@ describe('EditTaskSchema', () => {
         .toThrow('Name cannot exceed 200 characters');
     });
 
-    it('rejects importance outside 1-4', () => {
-      expect(() => EditTaskSchema.parse({ id: 1, importance: 5 }))
-        .toThrow();
-    });
-
-    it('rejects difficulty outside 1-4', () => {
-      expect(() => EditTaskSchema.parse({ id: 1, difficulty: 0 }))
-        .toThrow();
-    });
-
     it('rejects invalid background URL', () => {
       expect(() => EditTaskSchema.parse({
         id: 1,
@@ -1000,16 +914,6 @@ describe('EditTaskSchema', () => {
   });
 
   describe('edge cases', () => {
-    it('accepts importance of 1', () => {
-      const result = EditTaskSchema.parse({ id: 1, importance: 1 });
-      expect(result.importance).toBe(1);
-    });
-
-    it('accepts importance of 4', () => {
-      const result = EditTaskSchema.parse({ id: 1, importance: 4 });
-      expect(result.importance).toBe(4);
-    });
-
     it('accepts background alpha of 0', () => {
       const result = EditTaskSchema.parse({ id: 1, background_alpha: 0 });
       expect(result.background_alpha).toBe(0);
@@ -1048,79 +952,6 @@ describe('EditTaskSchema', () => {
       const result = EditTaskSchema.parse({ id: 1, exp: 0, skills: [1] });
       expect(result.exp).toBe(0);
       expect(result.skills).toEqual([1]);
-    });
-  });
-
-  describe('auto XP mode (importance/difficulty)', () => {
-    it('accepts task with importance/difficulty but no exp (auto mode)', () => {
-      const result = EditTaskSchema.parse({
-        id: 1,
-        importance: 4,
-        difficulty: 3,
-      });
-      expect(result.exp).toBeUndefined();
-      expect(result.importance).toBe(4);
-      expect(result.difficulty).toBe(3);
-    });
-
-    it('accepts task with only importance (auto mode)', () => {
-      const result = EditTaskSchema.parse({
-        id: 1,
-        importance: 3,
-      });
-      expect(result.importance).toBe(3);
-      expect(result.difficulty).toBeUndefined();
-    });
-
-    it('accepts task with only difficulty (auto mode)', () => {
-      const result = EditTaskSchema.parse({
-        id: 1,
-        difficulty: 2,
-      });
-      expect(result.difficulty).toBe(2);
-      expect(result.importance).toBeUndefined();
-    });
-
-    it('rejects importance below 1', () => {
-      expect(() => EditTaskSchema.parse({ id: 1, importance: 0 }))
-        .toThrow('Importance must be between 1 and 4');
-    });
-
-    it('rejects importance above 4', () => {
-      expect(() => EditTaskSchema.parse({ id: 1, importance: 5 }))
-        .toThrow('Importance must be between 1 and 4');
-    });
-
-    it('rejects difficulty below 1', () => {
-      expect(() => EditTaskSchema.parse({ id: 1, difficulty: 0 }))
-        .toThrow('Difficulty must be between 1 and 4');
-    });
-
-    it('rejects difficulty above 4', () => {
-      expect(() => EditTaskSchema.parse({ id: 1, difficulty: 5 }))
-        .toThrow('Difficulty must be between 1 and 4');
-    });
-
-    it('still requires skills when exp is explicitly set (even with importance/difficulty)', () => {
-      expect(() => EditTaskSchema.parse({
-        id: 1,
-        exp: 50,
-        importance: 3,
-        difficulty: 3,
-      })).toThrow('When exp is specified, skills must be provided as a non-empty array');
-    });
-
-    it('accepts exp + skills with importance/difficulty (explicit XP takes precedence)', () => {
-      const result = EditTaskSchema.parse({
-        id: 1,
-        exp: 100,
-        skills: [1],
-        importance: 3,
-        difficulty: 3,
-      });
-      expect(result.exp).toBe(100);
-      expect(result.skills).toEqual([1]);
-      expect(result.importance).toBe(3);
     });
   });
 

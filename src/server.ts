@@ -247,7 +247,7 @@ class LifeUpServer {
         name: 'create_task',
         description:
           'Create a new task in LifeUp. Specify task name and optional rewards (experience points and coins). ' +
-          'XP can be set explicitly (with skillIds) or auto-calculated based on importance/difficulty levels. ' +
+          'When setting XP, you must provide skillIds to indicate which attributes receive the XP. ' +
           'The task will be created as an active task in your LifeUp app. ' +
           'This tool will prompt you to confirm the server is running if it cannot connect.',
         inputSchema: {
@@ -260,7 +260,7 @@ class LifeUpServer {
             exp: {
               type: 'number',
               description:
-                'Experience points reward (optional, non-negative). If specified, must provide skillIds to indicate which attributes receive the XP. Omit this to use auto-calculation based on importance/difficulty.',
+                'Experience points reward (optional, non-negative). If specified, must provide skillIds to indicate which attributes receive the XP. When omitted, defaults to 0.',
             },
             skillIds: {
               type: 'array',
@@ -268,17 +268,7 @@ class LifeUpServer {
                 type: 'number',
               },
               description:
-                'Skill/attribute IDs to receive XP rewards. Required when setting exp parameter. Supports multiple values (e.g., [1, 2, 3]). For auto XP mode, omit this and use importance/difficulty instead.',
-            },
-            importance: {
-              type: 'number',
-              description:
-                'Task importance level (1-4). Used for auto XP calculation when exp is omitted. Higher values increase auto-calculated XP.',
-            },
-            difficulty: {
-              type: 'number',
-              description:
-                'Task difficulty level (1-4). Used for auto XP calculation when exp is omitted. Higher values increase auto-calculated XP.',
+                'Skill/attribute IDs to receive XP rewards. Required when setting exp parameter. Supports multiple values (e.g., [1, 2, 3]).',
             },
             coin: {
               type: 'number',
@@ -1032,7 +1022,7 @@ class LifeUpServer {
             exp: {
               type: 'number',
               description:
-                'Experience points reward (must be >= 0). Use exp_set_type to control whether value is absolute (replace) or relative (add/subtract). Requires skills when setting. Omit to use auto-calculation based on importance/difficulty.',
+                'Experience points reward (must be >= 0). Use exp_set_type to control whether value is absolute (replace) or relative (add/subtract). Requires skills when setting. When omitted, existing XP value remains unchanged.',
             },
             exp_set_type: {
               type: 'string',
@@ -1045,7 +1035,7 @@ class LifeUpServer {
               type: 'array',
               items: { type: 'number' },
               description:
-                'Skill/attribute IDs to receive XP rewards. Required when setting exp parameter. Supports multiple values (e.g., [1, 2, 3]). For auto XP mode, omit exp and use importance/difficulty instead.',
+                'Skill/attribute IDs to receive XP rewards. Required when setting exp parameter. Supports multiple values (e.g., [1, 2, 3]).',
             },
             category: {
               type: 'number',
@@ -1054,16 +1044,6 @@ class LifeUpServer {
             frequency: {
               type: 'number',
               description: 'Repeat frequency (-1=unlimited, -3=Ebbinghaus, -4=monthly, -5=yearly)',
-            },
-            importance: {
-              type: 'number',
-              description:
-                'Importance level (1-4). Used for auto XP calculation when exp is omitted. Higher values increase auto-calculated XP.',
-            },
-            difficulty: {
-              type: 'number',
-              description:
-                'Difficulty level (1-4). Used for auto XP calculation when exp is omitted. Higher values increase auto-calculated XP.',
             },
             deadline: {
               type: 'number',

@@ -46,7 +46,7 @@ export const CreateTaskSchema = z
       .min(1, 'Task name cannot be empty')
       .max(200, 'Task name cannot exceed 200 characters'),
     // XP is an optional field. When set, requires skillIds to specify which attributes receive the XP.
-    // When omitted with importance/difficulty, LifeUp auto-calculates XP based on task difficulty and importance.
+    // When omitted, defaults to 0.
     exp: z.number().nonnegative('Experience points must be non-negative').optional(),
     coin: z.number().nonnegative('Coin reward must be non-negative').optional(),
     coinVar: z.number().nonnegative('Coin variance must be non-negative').optional(),
@@ -58,18 +58,6 @@ export const CreateTaskSchema = z
       .optional(),
     content: z.string().max(1000, 'Task content cannot exceed 1000 characters').optional(),
     auto_use_item: z.boolean().optional(),
-    importance: z
-      .number()
-      .int()
-      .min(1, 'Importance must be between 1 and 4')
-      .max(4, 'Importance must be between 1 and 4')
-      .optional(),
-    difficulty: z
-      .number()
-      .int()
-      .min(1, 'Difficulty must be between 1 and 4')
-      .max(4, 'Difficulty must be between 1 and 4')
-      .optional(),
     task_type: z
       .number()
       .int()
@@ -92,7 +80,7 @@ export const CreateTaskSchema = z
     },
     {
       message:
-        'When exp is specified, skillIds must be provided as a non-empty array. To use auto XP calculation, omit exp and set importance/difficulty instead.',
+        'When exp is specified, skillIds must be provided as a non-empty array.',
       path: ['skillIds'],
     }
   )
@@ -252,18 +240,6 @@ export const EditTaskSchema = z
     skills: z.array(z.number().int().positive('Skill IDs must be positive')).optional(),
     category: z.number().int().min(0, 'Category must be non-negative').optional(),
     frequency: z.number().int().optional(),
-    importance: z
-      .number()
-      .int()
-      .min(1, 'Importance must be between 1 and 4')
-      .max(4, 'Importance must be between 1 and 4')
-      .optional(),
-    difficulty: z
-      .number()
-      .int()
-      .min(1, 'Difficulty must be between 1 and 4')
-      .max(4, 'Difficulty must be between 1 and 4')
-      .optional(),
     deadline: z.number().int().positive('Deadline must be valid timestamp').optional(),
     remind_time: z.number().int().positive('Remind time must be valid timestamp').optional(),
     start_time: z.number().int().positive('Start time must be valid timestamp').optional(),
@@ -302,7 +278,7 @@ export const EditTaskSchema = z
     },
     {
       message:
-        'When exp is specified, skills must be provided as a non-empty array. To use auto XP calculation, omit exp and set importance/difficulty instead.',
+        'When exp is specified, skills must be provided as a non-empty array.',
       path: ['skills'],
     }
   )

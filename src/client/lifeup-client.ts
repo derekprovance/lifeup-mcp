@@ -303,10 +303,6 @@ export class LifeUpClient {
     // Array field
     this.appendArray(params, 'skills', request.skillIds);
 
-    // Difficulty/importance
-    this.appendIfDefined(params, 'importance', request.importance);
-    this.appendIfDefined(params, 'difficulty', request.difficulty);
-
     // Boolean flags
     this.appendIfDefined(params, 'auto_use_item', request.auto_use_item, (val) => String(val));
 
@@ -983,8 +979,6 @@ export class LifeUpClient {
     // Other properties
     this.appendIfDefined(params, 'category', request.category);
     this.appendIfDefined(params, 'frequency', request.frequency);
-    this.appendIfDefined(params, 'importance', request.importance);
-    this.appendIfDefined(params, 'difficulty', request.difficulty);
     this.appendIfDefined(params, 'deadline', request.deadline);
     this.appendIfDefined(params, 'remind_time', request.remind_time);
     this.appendIfDefined(params, 'start_time', request.start_time);
