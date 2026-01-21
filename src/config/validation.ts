@@ -64,6 +64,8 @@ export const CreateTaskSchema = z
       .optional(),
     target_times: z.number().int().positive('Target times must be positive').optional(),
     is_affect_shop_reward: z.boolean().optional(),
+    importance: z.number().int().min(1, 'Importance must be 1-4').max(4, 'Importance must be 1-4').optional(),
+    difficulty: z.number().int().min(1, 'Difficulty must be 1-4').max(4, 'Difficulty must be 1-4').optional(),
     subtasks: z
       .array(SubtaskDefinitionSchema)
       .max(50, 'Cannot create more than 50 subtasks at once')
@@ -259,6 +261,8 @@ export const EditTaskSchema = z
       .optional(),
     target_times: z.number().int().positive('Target times must be positive').optional(),
     is_affect_shop_reward: z.boolean().optional(),
+    importance: z.number().int().min(1, 'Importance must be 1-4').max(4, 'Importance must be 1-4').optional(),
+    difficulty: z.number().int().min(1, 'Difficulty must be 1-4').max(4, 'Difficulty must be 1-4').optional(),
   })
   .refine((data) => data.id !== undefined || data.gid !== undefined || data.name !== undefined, {
     message: 'At least one of id, gid, or name must be provided',

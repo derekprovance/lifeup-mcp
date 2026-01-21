@@ -140,6 +140,17 @@ The server supports "safe mutations" - create/update/delete operations that requ
      - `create_task(name: "Read 30min", task_type: 1, target_times: 7, is_affect_shop_reward: true)` - Count task with shop reward scaling
      - `edit_task(id: 1, task_type: 1, target_times: 10)` - Convert existing task to count task with target of 10
 
+   **Task Metadata (Importance & Difficulty):**
+   - Both `create_task` and `edit_task` support optional `importance` and `difficulty` parameters
+   - `importance` (1-4): Marks task priority level (1=Low, 2=Normal, 3=High, 4=Critical)
+   - `difficulty` (1-4): Marks task difficulty (1=Easy, 2=Normal, 3=Hard, 4=Very Hard)
+   - Both parameters default to 1 if not specified
+   - These are metadata fields for organization and planning, not affecting rewards
+   - Examples:
+     - `create_task(name: "Learn TypeScript", importance: 3, difficulty: 3)` - High priority, hard task
+     - `edit_task(id: 5, importance: 2, difficulty: 1)` - Reduce importance and difficulty of existing task
+     - `create_task(name: "Quick review", importance: 1, difficulty: 1)` - Low priority, easy task
+
 2. **Achievement Management:**
    - `create_achievement` - Create new achievements without unlocking them (locked by default)
    - `update_achievement` - Modify achievement properties

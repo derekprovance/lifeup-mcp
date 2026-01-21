@@ -154,6 +154,8 @@ export interface CreateTaskRequest {
   task_type?: number; // 0=normal, 1=count, 2=negative, 3=API (requires LifeUp v1.99.1+)
   target_times?: number; // Target count for count tasks (required when task_type=1)
   is_affect_shop_reward?: boolean; // Whether count affects shop reward calculation (only valid when task_type=1)
+  importance?: number; // Task importance level (1-4)
+  difficulty?: number; // Task difficulty level (1-4)
   subtasks?: SubtaskDefinition[]; // Array of subtasks to create with the main task
 }
 
@@ -333,6 +335,8 @@ export interface EditTaskRequest {
   task_type?: number; // 0=normal, 1=count, 2=negative, 3=API
   target_times?: number; // Target count for count tasks (required when task_type=1)
   is_affect_shop_reward?: boolean; // Whether count affects shop reward calculation (only valid when task_type=1)
+  importance?: number; // Task importance level (1-4)
+  difficulty?: number; // Task difficulty level (1-4)
 }
 
 // Delete Task

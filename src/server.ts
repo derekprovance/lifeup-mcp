@@ -302,6 +302,20 @@ class LifeUpServer {
               description:
                 'Whether count affects shop item reward calculations (optional, only valid when task_type=1, defaults to false)',
             },
+            importance: {
+              type: 'number',
+              description:
+                'Task importance level: 1=Low, 2=Normal, 3=High, 4=Critical (optional, defaults to 1)',
+              minimum: 1,
+              maximum: 4,
+            },
+            difficulty: {
+              type: 'number',
+              description:
+                'Task difficulty level: 1=Easy, 2=Normal, 3=Hard, 4=Very Hard (optional, defaults to 1)',
+              minimum: 1,
+              maximum: 4,
+            },
             subtasks: {
               type: 'array',
               items: {
@@ -1061,6 +1075,20 @@ class LifeUpServer {
               type: 'boolean',
               description:
                 'Whether count affects shop item reward calculations (only valid when task_type=1)',
+            },
+            importance: {
+              type: 'number',
+              description:
+                'Task importance level: 1=Low, 2=Normal, 3=High, 4=Critical (optional, defaults to 1)',
+              minimum: 1,
+              maximum: 4,
+            },
+            difficulty: {
+              type: 'number',
+              description:
+                'Task difficulty level: 1=Easy, 2=Normal, 3=Hard, 4=Very Hard (optional, defaults to 1)',
+              minimum: 1,
+              maximum: 4,
             },
           },
         },

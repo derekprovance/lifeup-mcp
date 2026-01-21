@@ -332,6 +332,10 @@ export class LifeUpClient {
       String(val)
     );
 
+    // Task metadata
+    this.appendIfDefined(params, 'importance', request.importance);
+    this.appendIfDefined(params, 'difficulty', request.difficulty);
+
     return this.buildFinalUrl(LIFEUP_URL_SCHEMES.TASK_CREATE, params);
   }
 
@@ -1032,6 +1036,10 @@ export class LifeUpClient {
     this.appendIfDefined(params, 'is_affect_shop_reward', request.is_affect_shop_reward, (val) =>
       val ? 'true' : 'false'
     );
+
+    // Task metadata
+    this.appendIfDefined(params, 'importance', request.importance);
+    this.appendIfDefined(params, 'difficulty', request.difficulty);
 
     return this.buildFinalUrl(LIFEUP_URL_SCHEMES.TASK_EDIT, params);
   }
