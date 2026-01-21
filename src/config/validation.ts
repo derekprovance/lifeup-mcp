@@ -10,7 +10,6 @@ export const SubtaskDefinitionSchema = z.object({
     .string()
     .min(1, 'Subtask content cannot be empty')
     .max(200, 'Subtask content cannot exceed 200 characters'),
-  remind_time: z.number().int().positive('Remind time must be valid timestamp').optional(),
   order: z.number().int().optional(),
   coin: z
     .number()
@@ -51,8 +50,6 @@ export const CreateTaskSchema = z
     coin: z.number().nonnegative('Coin reward must be non-negative').optional(),
     coinVar: z.number().nonnegative('Coin variance must be non-negative').optional(),
     categoryId: z.number().nonnegative('Category ID must be non-negative').optional(),
-    deadline: z.number().positive('Deadline must be a valid timestamp').optional(),
-    frequency: z.number().int().optional(),
     skillIds: z
       .array(z.number().positive('Skill IDs must be positive'))
       .max(20, 'Cannot specify more than 20 skills')
@@ -240,10 +237,6 @@ export const EditTaskSchema = z
     coin_set_type: z.enum(['absolute', 'relative']).optional(),
     skills: z.array(z.number().int().positive('Skill IDs must be positive')).optional(),
     category: z.number().int().min(0, 'Category must be non-negative').optional(),
-    frequency: z.number().int().optional(),
-    deadline: z.number().int().positive('Deadline must be valid timestamp').optional(),
-    remind_time: z.number().int().positive('Remind time must be valid timestamp').optional(),
-    start_time: z.number().int().positive('Start time must be valid timestamp').optional(),
     color: z
       .string()
       .regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be hex format')
@@ -446,7 +439,6 @@ export const CreateSubtaskSchema = z
       .max(200, 'Subtask content cannot exceed 200 characters'),
 
     // Optional fields
-    remind_time: z.number().int().positive('Remind time must be valid timestamp').optional(),
     order: z.number().int().optional(),
     coin: z
       .number()
@@ -499,7 +491,6 @@ export const EditSubtaskSchema = z
 
     // Fields to update
     todo: z.string().min(1).max(200, 'Subtask content cannot exceed 200 characters').optional(),
-    remind_time: z.number().int().positive('Remind time must be valid timestamp').optional(),
     order: z.number().int().optional(),
     coin: z
       .number()

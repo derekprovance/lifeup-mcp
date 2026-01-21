@@ -129,73 +129,6 @@ describe.sequential('Edit/Delete Operations', () => {
       expectSuccess(response);
     });
 
-    // Phase 3.2: Timing Parameters
-    it('should edit task frequency', async () => {
-      const response = await client.callTool('edit_task', {
-        id: taskId,
-        frequency: 7, // Change to weekly
-      });
-
-      expectSuccess(response);
-    });
-
-    it('should add deadline to task', async () => {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 15);
-      const deadline = futureDate.toISOString().split('T')[0];
-
-      const response = await client.callTool('edit_task', {
-        id: taskId,
-        deadline,
-      });
-
-      expectSuccess(response);
-    });
-
-    it('should edit task remind_time', async () => {
-      const futureTime = new Date();
-      futureTime.setHours(futureTime.getHours() + 2);
-      const remindTime = futureTime.toISOString();
-
-      const response = await client.callTool('edit_task', {
-        id: taskId,
-        remind_time: remindTime,
-      });
-
-      // May not be supported
-      if (!response.isError) {
-        expectSuccess(response);
-      }
-    });
-
-    it('should edit task start_time', async () => {
-      const startTime = new Date().toISOString();
-
-      const response = await client.callTool('edit_task', {
-        id: taskId,
-        start_time: startTime,
-      });
-
-      // May not be supported
-      if (!response.isError) {
-        expectSuccess(response);
-      }
-    });
-
-    it('should edit task with frequency and deadline', async () => {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 30);
-      const deadline = futureDate.toISOString().split('T')[0];
-
-      const response = await client.callTool('edit_task', {
-        id: taskId,
-        frequency: 1, // Daily
-        deadline, // Expires in 30 days
-      });
-
-      expectSuccess(response);
-    });
-
     // Phase 3.3: Appearance Parameters
     it('should edit task color', async () => {
       const response = await client.callTool('edit_task', {
@@ -402,10 +335,6 @@ describe.sequential('Edit/Delete Operations', () => {
     });
 
     it('should edit task with all parameters at once', async () => {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 20);
-      const deadline = futureDate.toISOString().split('T')[0];
-
       const response = await client.callTool('edit_task', {
         id: taskId,
         name: 'Full Edit Test',
@@ -415,26 +344,12 @@ describe.sequential('Edit/Delete Operations', () => {
         coin_var: 50,
         item_name: 'Treasure',
         item_amount: 5,
-        frequency: 7,
-        deadline,
         category: 1,
         color: '#FF0000',
       });
 
       // Should succeed or partially succeed
       expect(response).toBeDefined();
-    });
-
-    it('should clear/remove deadline from task', async () => {
-      const response = await client.callTool('edit_task', {
-        id: taskId,
-        deadline: null,
-      });
-
-      // May or may not be supported
-      if (!response.isError) {
-        expectSuccess(response);
-      }
     });
 
     it('should clear/remove category from task', async () => {

@@ -24,34 +24,11 @@ import { TASK_STATUS } from '../client/constants.js';
 import { ensureServerHealthy, handleToolError } from './tool-helpers.js';
 
 /**
- * Format frequency enum to human-readable string
- */
-function formatFrequency(frequency: number): string {
-  if (frequency === 0) return 'Once';
-  if (frequency === 1) return 'Daily';
-  if (frequency > 1) return `Every ${frequency} days`;
-  if (frequency === -1) return 'Unlimited';
-  if (frequency === -3) return 'Ebbinghaus';
-  if (frequency === -4) return 'Monthly';
-  if (frequency === -5) return 'Yearly';
-  return `Unknown (${frequency})`;
-}
-
-/**
  * Format timestamp to human-readable date string
  */
 function formatTimestamp(timestamp: number | null | undefined, label: string): string {
   if (!timestamp) return '';
   return `  **${label}**: ${new Date(timestamp).toLocaleString()}\n`;
-}
-
-/**
- * Gets today's date at 23:59:00 as a timestamp in milliseconds
- */
-function getTodayEndOfDay(): number {
-  const today = new Date();
-  today.setHours(23, 59, 0, 0); // Set to 23:59:00.000
-  return today.getTime();
 }
 
 /**
@@ -144,7 +121,14 @@ function formatTaskDetails(task: Types.Task, includeStatus: boolean = true): str
 
   // Recurring task info
   if (task.frequency !== 0) {
-    result += `  **Frequency**: ${formatFrequency(task.frequency)}\n`;
+    let frequencyText = 'Unknown';
+    if (task.frequency === 1) frequencyText = 'Daily';
+    else if (task.frequency > 1) frequencyText = `Every ${task.frequency} days`;
+    else if (task.frequency === -1) frequencyText = 'Unlimited';
+    else if (task.frequency === -3) frequencyText = 'Ebbinghaus';
+    else if (task.frequency === -4) frequencyText = 'Monthly';
+    else if (task.frequency === -5) frequencyText = 'Yearly';
+    result += `  **Frequency**: ${frequencyText}\n`;
   }
   if (task.gid && task.frequency !== 0) {
     result += `  **Recurring Group ID**: ${task.gid}\n`;
@@ -192,11 +176,6 @@ export class TaskTools {
       const validated = CreateTaskSchema.parse(input);
       configManager.logIfDebug('Creating task:', validated);
 
-      // Auto-set deadline to today at 23:59:00 if frequency is set but deadline is not
-      if (validated.frequency !== undefined && validated.frequency !== 0 && !validated.deadline) {
-        validated.deadline = getTodayEndOfDay();
-      }
-
       await ensureServerHealthy();
 
       const result = await lifeupClient.createTask(validated);
@@ -214,13 +193,7 @@ export class TaskTools {
         `\n` +
         (validated.categoryId !== undefined ? `**Category ID**: ${validated.categoryId}\n` : '') +
         (validated.skillIds?.length ? `**Skills**: ${validated.skillIds.join(', ')}\n` : '') +
-        (validated.content ? `**Description**: ${validated.content}\n` : '') +
-        (validated.deadline
-          ? `**Deadline**: ${new Date(validated.deadline).toLocaleString()}\n`
-          : '') +
-        (validated.frequency !== undefined && validated.frequency !== 0
-          ? `**Frequency**: ${formatFrequency(validated.frequency)}\n`
-          : '');
+        (validated.content ? `**Description**: ${validated.content}\n` : '');
 
       // Add subtask creation results
       if (result.subtaskBatchResult) {

@@ -46,7 +46,6 @@ describe('CreateTaskSchema', () => {
         coin: 50,
         coinVar: 10,
         categoryId: 1,
-        deadline: Date.now() + 86400000,
         skillIds: [1, 2, 3],
         content: 'Task description',
       };
@@ -96,11 +95,6 @@ describe('CreateTaskSchema', () => {
     it('rejects negative categoryId', () => {
       expect(() => CreateTaskSchema.parse({ name: 'Task', categoryId: -1 }))
         .toThrow('Category ID must be non-negative');
-    });
-
-    it('rejects non-positive deadline', () => {
-      expect(() => CreateTaskSchema.parse({ name: 'Task', deadline: 0 }))
-        .toThrow('Deadline must be a valid timestamp');
     });
 
     it('rejects more than 20 skills', () => {
@@ -274,67 +268,6 @@ describe('CreateTaskSchema', () => {
         is_affect_shop_reward: true,
       });
       expect(result.is_affect_shop_reward).toBe(true);
-    });
-  });
-
-  describe('frequency parameter validation', () => {
-    it('accepts task with frequency: 0 (once)', () => {
-      const result = CreateTaskSchema.parse({ name: 'Task', frequency: 0 });
-      expect(result.frequency).toBe(0);
-    });
-
-    it('accepts task with frequency: 1 (daily)', () => {
-      const result = CreateTaskSchema.parse({ name: 'Task', frequency: 1 });
-      expect(result.frequency).toBe(1);
-    });
-
-    it('accepts task with frequency: 7 (weekly)', () => {
-      const result = CreateTaskSchema.parse({ name: 'Task', frequency: 7 });
-      expect(result.frequency).toBe(7);
-    });
-
-    it('accepts task with frequency: -1 (unlimited)', () => {
-      const result = CreateTaskSchema.parse({ name: 'Task', frequency: -1 });
-      expect(result.frequency).toBe(-1);
-    });
-
-    it('accepts task with frequency: -3 (Ebbinghaus)', () => {
-      const result = CreateTaskSchema.parse({ name: 'Task', frequency: -3 });
-      expect(result.frequency).toBe(-3);
-    });
-
-    it('accepts task with frequency: -4 (monthly)', () => {
-      const result = CreateTaskSchema.parse({ name: 'Task', frequency: -4 });
-      expect(result.frequency).toBe(-4);
-    });
-
-    it('accepts task with frequency: -5 (yearly)', () => {
-      const result = CreateTaskSchema.parse({ name: 'Task', frequency: -5 });
-      expect(result.frequency).toBe(-5);
-    });
-
-    it('rejects non-integer frequency values', () => {
-      expect(() => CreateTaskSchema.parse({ name: 'Task', frequency: 1.5 }))
-        .toThrow();
-    });
-
-    it('accepts task without frequency (optional field)', () => {
-      const result = CreateTaskSchema.parse({ name: 'Task' });
-      expect(result.frequency).toBeUndefined();
-    });
-
-    it('accepts task with frequency in combination with other parameters', () => {
-      const result = CreateTaskSchema.parse({
-        name: 'Daily Task',
-        frequency: 1,
-        exp: 50,
-        skillIds: [1],
-        coin: 100,
-        deadline: Date.now() + 86400000,
-      });
-      expect(result.frequency).toBe(1);
-      expect(result.exp).toBe(50);
-      expect(result.coin).toBe(100);
     });
   });
 });
@@ -1753,7 +1686,6 @@ describe('SubtaskDefinitionSchema', () => {
         todo: 'Complete chapter',
         coin: 50,
         exp: 100,
-        remind_time: Date.now() + 86400000,
         order: 1,
         coin_var: 5,
         auto_use_item: true,
@@ -1863,7 +1795,6 @@ describe('CreateSubtaskSchema', () => {
         todo: 'Complete section',
         coin: 25,
         exp: 50,
-        remind_time: Date.now() + 3600000,
         order: 2,
         auto_use_item: true,
         item_id: 3,

@@ -70,7 +70,7 @@ LifeUp Cloud API (Android Device)
 - Enables users to browse and search the shop inventory
 
 **tools/mutation-tools.ts** - Safe data mutation operations
-- `editTask` - Edit existing task properties (name, rewards, deadline, category, appearance)
+- `editTask` - Edit existing task properties (name, rewards, category, appearance, task type, count settings)
 - `addShopItem` - Create new shop items with price, stock, effects, and purchase limits
 - `editShopItem` - Modify shop items with absolute/relative adjustments
 - `applyPenalty` - Apply penalties (coins, exp, or items) with custom reasons
@@ -109,7 +109,7 @@ The server supports "safe mutations" - create/update/delete operations that requ
 **Safe Mutations (Available):**
 1. **Task Management:**
    - `create_task` - Creates tasks that must be manually completed in the app
-   - `edit_task` - Edit existing task properties (name, rewards, deadline, category, appearance). Supports absolute/relative value adjustments via exp_set_type and coin_set_type parameters.
+   - `edit_task` - Edit existing task properties (name, rewards, category, appearance, task type, count settings). Supports absolute/relative value adjustments via exp_set_type and coin_set_type parameters.
    - `delete_task` - Permanently delete a task by its ID. ⚠️ This action cannot be undone. Blocked in SAFE_MODE. Requires explicit task ID to prevent accidental deletions.
 
    **XP Parameter:**
@@ -140,23 +140,6 @@ The server supports "safe mutations" - create/update/delete operations that requ
      - `create_task(name: "Read 30min", task_type: 1, target_times: 7, is_affect_shop_reward: true)` - Count task with shop reward scaling
      - `edit_task(id: 1, task_type: 1, target_times: 10)` - Convert existing task to count task with target of 10
 
-   **Frequency Parameter:**
-   - `frequency` is optional. When specified, creates a recurring task. When omitted, defaults to 0 (one-time task).
-   - Frequency values:
-     - 0 = Once (one-time task, default)
-     - 1 = Daily
-     - N (N>1) = Every N days (e.g., 3 = every 3 days, 7 = weekly)
-     - -1 = Unlimited (repeatable without time limit)
-     - -3 = Ebbinghaus (spaced repetition pattern, requires LifeUp v1.99.1+)
-     - -4 = Monthly
-     - -5 = Yearly
-   - Examples:
-     - `create_task(name: "Daily Exercise", frequency: 1)` - Daily recurring task
-     - `create_task(name: "Weekly Review", frequency: 7)` - Every 7 days
-     - `create_task(name: "Monthly Budget Review", frequency: -4)` - Monthly
-     - `create_task(name: "Learn New Skill", frequency: -3)` - Ebbinghaus pattern
-   - Note: For `edit_task`, the frequency parameter works identically
-
 2. **Achievement Management:**
    - `create_achievement` - Create new achievements without unlocking them (locked by default)
    - `update_achievement` - Modify achievement properties
@@ -186,6 +169,15 @@ Enforcement through:
 - When SAFE_MODE is enabled, create operations remain available
 - Edit and delete operations are blocked both at tool list registration and runtime
 - Users receive clear error messages if attempting blocked operations
+
+**Time/Recurrence Parameters Removed:**
+- The LifeUp API has timezone handling bugs that corrupt recurring tasks and deadlines. The following parameters have been removed from task input:
+  - `frequency` (recurring task patterns)
+  - `deadline` (task due dates)
+  - `remind_time` (subtask reminders)
+  - `start_time` (task start times)
+- **You can still** view all existing time data: search tasks by deadline using `deadlineBefore`, view deadline/frequency in task details, see created/updated timestamps
+- **Count task features remain available**: `task_type`, `target_times`, `is_affect_shop_reward` are not timezone-dependent and continue to work normally
 
 ### Error Flow
 

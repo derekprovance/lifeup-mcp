@@ -278,17 +278,6 @@ class LifeUpServer {
               type: 'number',
               description: 'Category/list ID to place the task in (optional)',
             },
-            deadline: {
-              type: 'number',
-              description: 'Deadline as timestamp in milliseconds (optional)',
-            },
-            frequency: {
-              type: 'number',
-              description:
-                'Repeat frequency: 0=once (default), 1=daily, N=every N days (N>1), ' +
-                '-1=unlimited, -3=Ebbinghaus (requires v1.99.1), -4=monthly, -5=yearly. ' +
-                'Defaults to 0 (one-time task) if omitted.',
-            },
             content: {
               type: 'string',
               description: 'Task description/content (optional, max 1000 characters)',
@@ -321,10 +310,6 @@ class LifeUpServer {
                   todo: {
                     type: 'string',
                     description: 'Subtask content/description (required, max 200 characters)',
-                  },
-                  remind_time: {
-                    type: 'number',
-                    description: 'Reminder time as timestamp in milliseconds (optional)',
                   },
                   order: {
                     type: 'number',
@@ -506,10 +491,6 @@ class LifeUpServer {
               type: 'string',
               description: 'Subtask content/description (required, max 200 characters)',
             },
-            remind_time: {
-              type: 'number',
-              description: 'Reminder time as timestamp in milliseconds (optional)',
-            },
             order: {
               type: 'number',
               description: 'Position/order of subtask in the list (optional)',
@@ -599,10 +580,6 @@ class LifeUpServer {
             todo: {
               type: 'string',
               description: 'Updated subtask content/description (optional, max 200 characters)',
-            },
-            remind_time: {
-              type: 'number',
-              description: 'Reminder time as timestamp in milliseconds (optional)',
             },
             order: {
               type: 'number',
@@ -1047,16 +1024,6 @@ class LifeUpServer {
             category: {
               type: 'number',
               description: 'List/category ID (0 for default)',
-            },
-            frequency: {
-              type: 'number',
-              description:
-                'Repeat frequency: 0=once, 1=daily, N=every N days (N>1), ' +
-                '-1=unlimited, -3=Ebbinghaus (requires v1.99.1), -4=monthly, -5=yearly',
-            },
-            deadline: {
-              type: 'number',
-              description: 'Due date as timestamp in milliseconds',
             },
             color: {
               type: 'string',

@@ -148,8 +148,6 @@ export interface CreateTaskRequest {
   coin?: number;
   coinVar?: number;
   categoryId?: number;
-  deadline?: number;
-  frequency?: number;
   skillIds?: number[];
   content?: string;
   auto_use_item?: boolean;
@@ -184,7 +182,6 @@ export interface SubtaskBatchResult {
 // Subtask Definition for inline creation with create_task
 export interface SubtaskDefinition {
   todo: string; // Required: subtask content
-  remind_time?: number;
   order?: number;
   coin?: number;
   coin_var?: number;
@@ -207,7 +204,6 @@ export interface CreateSubtaskRequest {
   todo: string;
 
   // Optional fields
-  remind_time?: number;
   order?: number;
   coin?: number;
   coin_var?: number;
@@ -235,7 +231,6 @@ export interface EditSubtaskRequest {
 
   // Fields to update
   todo?: string;
-  remind_time?: number;
   order?: number;
   coin?: number;
   coin_var?: number;
@@ -324,10 +319,6 @@ export interface EditTaskRequest {
   coin_set_type?: 'absolute' | 'relative';
   skills?: number[];
   category?: number;
-  frequency?: number;
-  deadline?: number;
-  remind_time?: number;
-  start_time?: number;
   color?: string;
   background_url?: string;
   background_alpha?: number;

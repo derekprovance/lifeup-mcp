@@ -315,8 +315,6 @@ export class LifeUpClient {
     this.appendIfDefined(params, 'coin', request.coin);
     this.appendIfDefined(params, 'coin_var', request.coinVar);
     this.appendIfDefined(params, 'category', request.categoryId);
-    this.appendIfDefined(params, 'deadline', request.deadline);
-    this.appendIfDefined(params, 'frequency', request.frequency);
 
     // String field
     this.appendIfDefined(params, 'notes', request.content);
@@ -999,10 +997,6 @@ export class LifeUpClient {
 
     // Other properties
     this.appendIfDefined(params, 'category', request.category);
-    this.appendIfDefined(params, 'frequency', request.frequency);
-    this.appendIfDefined(params, 'deadline', request.deadline);
-    this.appendIfDefined(params, 'remind_time', request.remind_time);
-    this.appendIfDefined(params, 'start_time', request.start_time);
 
     // Color encoding
     this.appendIfDefined(params, 'color', request.color);
@@ -1341,7 +1335,6 @@ export class LifeUpClient {
     }
 
     // Optional fields
-    this.appendIfDefined(params, 'remind_time', request.remind_time);
     this.appendIfDefined(params, 'order', request.order);
     this.appendIfDefined(params, 'coin', request.coin);
     this.appendIfDefined(params, 'coin_var', request.coin_var);

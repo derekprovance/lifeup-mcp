@@ -46,32 +46,6 @@ describe('Create Operations', () => {
       testData['track']('task', taskId); // Track for cleanup
     });
 
-    it('should create task with frequency (daily)', async () => {
-      const response = await client.callTool('create_task', {
-        name: '[E2E-TEST] Daily Task',
-        frequency: 1,
-        exp: 30,
-        skillIds: [1],
-      });
-
-      expectCreatedSuccessfully(response);
-      const taskId = extractId(response.text);
-      testData['track']('task', taskId);
-    });
-
-    it('should create task with frequency (every 3 days)', async () => {
-      const response = await client.callTool('create_task', {
-        name: '[E2E-TEST] Every 3 Days Task',
-        frequency: 3,
-        exp: 40,
-        skillIds: [1],
-      });
-
-      expectCreatedSuccessfully(response);
-      const taskId = extractId(response.text);
-      testData['track']('task', taskId);
-    });
-
     it('should create count task (repeatable)', async () => {
       const response = await client.callTool('create_task', {
         name: '[E2E-TEST] Count Task',
@@ -101,23 +75,6 @@ describe('Create Operations', () => {
       testData['track']('task', taskId);
     });
 
-    it('should create task with deadline', async () => {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 7);
-      const deadline = futureDate.toISOString().split('T')[0];
-
-      const response = await client.callTool('create_task', {
-        name: '[E2E-TEST] Task with Deadline',
-        deadline,
-        exp: 100,
-        skillIds: [1],
-      });
-
-      expectCreatedSuccessfully(response);
-      const taskId = extractId(response.text);
-      testData['track']('task', taskId);
-    });
-
     it('should create task with auto_use_item', async () => {
       const response = await client.callTool('create_task', {
         name: '[E2E-TEST] Task with Auto Use Item',
@@ -128,101 +85,6 @@ describe('Create Operations', () => {
       expectCreatedSuccessfully(response);
       const taskId = extractId(response.text);
       testData['track']('task', taskId);
-    });
-
-    // Phase 1.1: Frequency Variants
-    it('should create one-time task (frequency=0)', async () => {
-      const response = await client.callTool('create_task', {
-        name: '[E2E-TEST] One-time Task',
-        frequency: 0,
-        exp: 30,
-        skillIds: [1],
-      });
-
-      expectCreatedSuccessfully(response);
-      const taskId = extractId(response.text);
-      testData['track']('task', taskId);
-    });
-
-    it('should create unlimited repeatable task (frequency=-1)', async () => {
-      const response = await client.callTool('create_task', {
-        name: '[E2E-TEST] Unlimited Repeatable Task',
-        frequency: -1,
-        exp: 25,
-        skillIds: [1],
-      });
-
-      expectCreatedSuccessfully(response);
-      const taskId = extractId(response.text);
-      testData['track']('task', taskId);
-    });
-
-    it('should create monthly recurring task (frequency=-4)', async () => {
-      const response = await client.callTool('create_task', {
-        name: '[E2E-TEST] Monthly Task',
-        frequency: -4,
-        exp: 100,
-        skillIds: [1],
-      });
-
-      expectCreatedSuccessfully(response);
-      const taskId = extractId(response.text);
-      testData['track']('task', taskId);
-    });
-
-    it('should create yearly recurring task (frequency=-5)', async () => {
-      const response = await client.callTool('create_task', {
-        name: '[E2E-TEST] Yearly Task',
-        frequency: -5,
-        exp: 200,
-        skillIds: [1],
-      });
-
-      expectCreatedSuccessfully(response);
-      const taskId = extractId(response.text);
-      testData['track']('task', taskId);
-    });
-
-    it('should create weekly task (frequency=7)', async () => {
-      const response = await client.callTool('create_task', {
-        name: '[E2E-TEST] Weekly Task',
-        frequency: 7,
-        exp: 50,
-        skillIds: [1],
-      });
-
-      expectCreatedSuccessfully(response);
-      const taskId = extractId(response.text);
-      testData['track']('task', taskId);
-    });
-
-    it('should create biweekly task (frequency=14)', async () => {
-      const response = await client.callTool('create_task', {
-        name: '[E2E-TEST] Biweekly Task',
-        frequency: 14,
-        exp: 60,
-        skillIds: [1],
-      });
-
-      expectCreatedSuccessfully(response);
-      const taskId = extractId(response.text);
-      testData['track']('task', taskId);
-    });
-
-    it('should create Ebbinghaus spaced repetition task (frequency=-3)', async () => {
-      const response = await client.callTool('create_task', {
-        name: '[E2E-TEST] Ebbinghaus Task',
-        frequency: -3,
-        exp: 15,
-        skillIds: [1],
-      });
-
-      // This may fail if LifeUp version doesn't support Ebbinghaus
-      if (!response.isError) {
-        expectCreatedSuccessfully(response);
-        const taskId = extractId(response.text);
-        testData['track']('task', taskId);
-      }
     });
 
     // Phase 1.2: Task Types
@@ -387,24 +249,6 @@ describe('Create Operations', () => {
     });
 
     // Phase 1.5: Parameter Combinations
-    it('should create recurring task with deadline (frequency + deadline)', async () => {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 30);
-      const deadline = futureDate.toISOString().split('T')[0];
-
-      const response = await client.callTool('create_task', {
-        name: '[E2E-TEST] Recurring with Deadline',
-        frequency: 1, // Daily
-        deadline, // Expires in 30 days
-        exp: 50,
-        skillIds: [1],
-      });
-
-      expectCreatedSuccessfully(response);
-      const taskId = extractId(response.text);
-      testData['track']('task', taskId);
-    });
-
     it('should create count task with subtasks', async () => {
       const response = await client.callTool('create_task', {
         name: '[E2E-TEST] Count Task with Subtasks',
@@ -449,24 +293,6 @@ describe('Create Operations', () => {
       expectCreatedSuccessfully(response);
       const taskId = extractId(response.text);
       testData['track']('task', taskId);
-    });
-
-    it('should create Ebbinghaus count task (frequency=-3 with task_type=1)', async () => {
-      const response = await client.callTool('create_task', {
-        name: '[E2E-TEST] Ebbinghaus Count Task',
-        frequency: -3,
-        task_type: 1,
-        target_times: 3,
-        exp: 20,
-        skillIds: [1],
-      });
-
-      // May fail if version doesn't support Ebbinghaus
-      if (!response.isError) {
-        expectCreatedSuccessfully(response);
-        const taskId = extractId(response.text);
-        testData['track']('task', taskId);
-      }
     });
 
     // Phase 1.6: Validation Edge Cases
