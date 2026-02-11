@@ -221,7 +221,11 @@ class LifeUpServer {
               };
           }
 
-          return {
+          // Detect tool-level errors by checking for error marker (❌ emoji)
+          // Tools return strings starting with ❌ when they encounter errors
+          const isToolError = result.startsWith('❌');
+
+          const response: any = {
             content: [
               {
                 type: 'text',
@@ -229,6 +233,14 @@ class LifeUpServer {
               },
             ],
           };
+
+          // Set isError flag for tool-level failures per MCP spec
+          // This allows LLMs to see errors and self-correct
+          if (isToolError) {
+            response.isError = true;
+          }
+
+          return response;
         } catch (error) {
           return {
             content: [

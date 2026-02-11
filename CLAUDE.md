@@ -204,6 +204,23 @@ Tool catches and formats as user-friendly response string
 Claude receives actionable error message
 ```
 
+### MCP Error Signaling
+
+The server follows MCP best practices for error reporting:
+
+1. **Tool Execution Errors**: Set `isError: true` in CallToolResult
+   - Detected by checking for ❌ emoji marker at start of response
+   - Allows LLMs to see errors and attempt self-correction
+   - Examples: API failures, validation errors, connection issues
+
+2. **Protocol-Level Errors**: Returned as JSON-RPC errors
+   - Unknown tools, malformed requests, server crashes
+   - Less likely to be recoverable by LLMs
+
+**Error Detection:**
+Server checks if tool response starts with ❌ (from handleToolError() in tool-helpers.ts).
+All tool errors use this marker consistently.
+
 ## Common Commands
 
 ### Build and Development

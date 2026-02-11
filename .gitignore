@@ -11,4 +11,4 @@ dist/
 *.swp
 *.swo
 ~*
-coverage/
+coverage/*
