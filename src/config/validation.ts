@@ -372,9 +372,7 @@ export const EditShopItemSchema = z
 // Apply Penalty Schema
 export const ApplyPenaltySchema = z
   .object({
-    type: z.enum(['coin', 'exp', 'item'], {
-      errorMap: () => ({ message: 'Type must be coin, exp, or item' }),
-    }),
+    type: z.enum(['coin', 'exp', 'item']),
     content: z
       .string()
       .min(1, 'Penalty reason is required')
