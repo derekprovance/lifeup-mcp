@@ -345,6 +345,11 @@ export class AchievementTools {
 
   /**
    * Create a new achievement
+   *
+   * TODO: LifeUp API Limitation
+   * The API does not return the created achievement ID in the response.
+   * Workaround: Query achievements by category or name to retrieve the ID for subsequent updates/deletions.
+   * The achievement is created successfully, but ID extraction requires additional lookups.
    */
   static async createAchievement(input: unknown): Promise<string> {
     try {
@@ -384,7 +389,11 @@ export class AchievementTools {
 
   /**
    * Update an existing achievement
-   * Note: Unlock conditions cannot be modified. To change conditions, delete and recreate the achievement.
+   *
+   * TODO: LifeUp API Limitation
+   * The LifeUp API does not support updating conditions_json (unlock conditions) directly.
+   * Supported updates: name, description, exp, coin, skills, items, secret flag, color, unlocked status.
+   * Workaround: To change unlock conditions, delete the achievement and create a new one with desired conditions.
    */
   static async updateAchievement(input: unknown): Promise<string> {
     try {

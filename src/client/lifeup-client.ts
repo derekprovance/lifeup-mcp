@@ -739,6 +739,14 @@ export class LifeUpClient {
   /**
    * Create a new achievement
    */
+  /**
+   * Create a new achievement
+   *
+   * TODO: LifeUp API Limitation
+   * The API does not return the created achievement ID in the response.
+   * Workaround: Query achievements by name or category to retrieve the created ID
+   * for subsequent edit/delete operations.
+   */
   async createAchievement(request: Types.CreateAchievementRequest): Promise<Types.HttpResponse> {
     return this.executeUrlSchemeOperation(
       () => this.buildAchievementUrl(request),
@@ -749,6 +757,10 @@ export class LifeUpClient {
 
   /**
    * Update an existing achievement
+   *
+   * TODO: LifeUp API Limitation
+   * The API does not support updating conditions_json (unlock conditions) directly.
+   * Workaround: Delete the achievement and create a new one with the desired conditions.
    */
   async updateAchievement(request: Types.UpdateAchievementRequest): Promise<Types.HttpResponse> {
     return this.executeUrlSchemeOperation(
@@ -879,6 +891,11 @@ export class LifeUpClient {
 
   /**
    * Add a new shop item
+   *
+   * TODO: LifeUp API Limitation
+   * The API does not return the created shop item ID in the response.
+   * Workaround: Query shop items by name or category to retrieve the created ID
+   * for subsequent edit/delete operations.
    */
   async addShopItem(request: Types.AddShopItemRequest): Promise<Types.HttpResponse> {
     return this.executeUrlSchemeOperation(
@@ -1206,6 +1223,16 @@ export class LifeUpClient {
 
   /**
    * Create a subtask for an existing task
+   *
+   * TODO: LifeUp API Limitation
+   * The API does not return the created subtask ID in the response.
+   * Workaround: Query by subtask name or parent task to retrieve the created ID
+   * for subsequent edit operations.
+   *
+   * TODO: LifeUp API Limitation
+   * Creating tasks with inline subtasks fails with "Invalid time value" error.
+   * Root cause: Undocumented timezone handling bugs in the subtask endpoint.
+   * Workaround: Create subtasks separately using this method instead of inline.
    */
   async createSubtask(request: Types.CreateSubtaskRequest): Promise<Types.SubtaskApiResponse> {
     return this.executeUrlSchemeOperation(
@@ -1224,6 +1251,10 @@ export class LifeUpClient {
 
   /**
    * Edit an existing subtask
+   *
+   * IMPORTANT: This method requires BOTH the parent task identifier (main_id, main_gid, or main_name)
+   * AND the subtask identifier (edit_id, edit_gid, or edit_name).
+   * The LifeUp API needs both to correctly identify which subtask to edit.
    */
   async editSubtask(request: Types.EditSubtaskRequest): Promise<Types.SubtaskApiResponse> {
     return this.executeUrlSchemeOperation(

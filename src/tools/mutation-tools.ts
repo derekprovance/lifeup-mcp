@@ -90,6 +90,11 @@ export class MutationTools {
 
   /**
    * Add a new shop item
+   *
+   * TODO: LifeUp API Limitation
+   * The API does not reliably return the created shop item ID in the response.
+   * Workaround: Query shop items by name or category to retrieve the ID for subsequent edits.
+   * The item is created successfully, but ID extraction may require additional lookups.
    */
   static async addShopItem(input: unknown): Promise<string> {
     try {

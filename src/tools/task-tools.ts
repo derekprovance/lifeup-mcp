@@ -170,6 +170,11 @@ function formatTaskSummary(task: Types.Task, includeStatus: boolean = true): str
 export class TaskTools {
   /**
    * Create a new task in LifeUp with optional subtasks
+   *
+   * TODO: LifeUp API Limitation
+   * Creating tasks with inline subtasks fails with "Invalid time value" error due to
+   * undocumented timezone handling bugs in the LifeUp API. This affects the subtasks parameter.
+   * Workaround: Create the task first, then create subtasks separately using create_subtask tool.
    */
   static async createTask(input: unknown): Promise<string> {
     try {
