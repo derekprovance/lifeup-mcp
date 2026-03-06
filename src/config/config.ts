@@ -5,13 +5,24 @@
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
+import { existsSync } from 'fs';
 import { DEFAULT_CONFIG } from '../client/constants.js';
 
-// Load .env file from project root
+// Load .env file - search in multiple locations
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const projectRoot = resolve(__dirname, '../../');
-dotenv.config({ path: resolve(projectRoot, '.env') });
+
+// Try to find .env in common locations
+const possiblePaths = [
+  resolve(__dirname, '../../.env'), // From src/config (2 levels up)
+  resolve(process.cwd(), '.env'), // Current working directory
+  resolve(process.env.HOME || '', '.lifeup.env'), // Home directory fallback
+];
+
+const envPath = possiblePaths.find(p => existsSync(p));
+if (envPath) {
+  dotenv.config({ path: envPath, quiet: true });
+}
 
 export interface LifeUpConfig {
   host: string;
