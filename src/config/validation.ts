@@ -70,6 +70,7 @@ export const CreateTaskSchema = z
       .array(SubtaskDefinitionSchema)
       .max(50, 'Cannot create more than 50 subtasks at once')
       .optional(),
+    frequency: z.number().int().optional(),
   })
   .refine(
     (data) => {
@@ -117,7 +118,7 @@ export const TaskHistorySchema = z.object({
 });
 
 export const GetTaskDetailsSchema = z.object({
-  id: z.number().int().positive('Task ID must be positive'),
+  taskId: z.number().int().positive('Task ID must be positive'),
 });
 
 export const AchievementMatchSchema = z.object({
@@ -263,6 +264,7 @@ export const EditTaskSchema = z
     is_affect_shop_reward: z.boolean().optional(),
     importance: z.number().int().min(1, 'Importance must be 1-4').max(4, 'Importance must be 1-4').optional(),
     difficulty: z.number().int().min(1, 'Difficulty must be 1-4').max(4, 'Difficulty must be 1-4').optional(),
+    frequency: z.number().int().optional(),
   })
   .refine((data) => data.id !== undefined || data.gid !== undefined || data.name !== undefined, {
     message: 'At least one of id, gid, or name must be provided',
@@ -297,7 +299,7 @@ export const EditTaskSchema = z
 
 // Delete Task Schema
 export const DeleteTaskSchema = z.object({
-  id: z.number().int().positive('Task ID must be positive'),
+  taskId: z.number().int().positive('Task ID must be positive'),
 });
 
 // Item Effect Schema

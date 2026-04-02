@@ -405,11 +405,11 @@ export class TaskTools {
 
       await ensureServerHealthy();
 
-      const response = await lifeupClient.deleteTask(validated);
+      const response = await lifeupClient.deleteTask({ id: validated.taskId });
 
       return (
         `✓ Task deleted successfully!\n\n` +
-        `**Task ID**: ${validated.id}\n` +
+        `**Task ID**: ${validated.taskId}\n` +
         `**Note**: This action is permanent and cannot be undone.`
       );
     } catch (error) {
@@ -429,10 +429,10 @@ export class TaskTools {
 
       // Fetch all tasks and find the requested one
       const tasks = await lifeupClient.getAllTasks();
-      const task = tasks.find((t) => t.id === validated.id);
+      const task = tasks.find((t) => t.id === validated.taskId);
 
       if (!task) {
-        return `Task with ID ${validated.id} not found. Use list_all_tasks or search_tasks to find available task IDs.`;
+        return `Task with ID ${validated.taskId} not found. Use list_all_tasks or search_tasks to find available task IDs.`;
       }
 
       let result = `## Task Details\n\n`;

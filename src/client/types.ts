@@ -157,6 +157,7 @@ export interface CreateTaskRequest {
   importance?: number; // Task importance level (1-4)
   difficulty?: number; // Task difficulty level (1-4)
   subtasks?: SubtaskDefinition[]; // Array of subtasks to create with the main task
+  frequency?: number; // Repeat frequency: 0=never, 1=daily, 2=weekly, etc.
 }
 
 // Task Creation API Response
@@ -337,6 +338,7 @@ export interface EditTaskRequest {
   is_affect_shop_reward?: boolean; // Whether count affects shop reward calculation (only valid when task_type=1)
   importance?: number; // Task importance level (1-4)
   difficulty?: number; // Task difficulty level (1-4)
+  frequency?: number; // Repeat frequency: 0=never, 1=daily, 2=weekly, etc.
 }
 
 // Delete Task
