@@ -335,6 +335,7 @@ export class LifeUpClient {
     // Task metadata
     this.appendIfDefined(params, 'importance', request.importance);
     this.appendIfDefined(params, 'difficulty', request.difficulty);
+    this.appendIfDefined(params, 'frequency', request.frequency);
 
     return this.buildFinalUrl(LIFEUP_URL_SCHEMES.TASK_CREATE, params);
   }
@@ -1057,6 +1058,7 @@ export class LifeUpClient {
     // Task metadata
     this.appendIfDefined(params, 'importance', request.importance);
     this.appendIfDefined(params, 'difficulty', request.difficulty);
+    this.appendIfDefined(params, 'frequency', request.frequency);
 
     return this.buildFinalUrl(LIFEUP_URL_SCHEMES.TASK_EDIT, params);
   }

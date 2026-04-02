@@ -135,6 +135,11 @@ export const CREATE_TASK_TOOL = {
         description:
           'Array of subtasks to create with the main task (optional, max 50 subtasks)',
       },
+      frequency: {
+        type: 'number',
+        description:
+          'Repeat frequency: 0=never, 1=daily, 2=weekly, etc. Special values: -1=Unlimited, -3=Ebbinghaus, -4=Monthly, -5=Yearly.',
+      },
     },
     required: ['name'],
   },
@@ -299,6 +304,11 @@ export const EDIT_TASK_TOOL = {
         description: 'Task difficulty: 1=Easy, 2=Normal, 3=Hard, 4=Very Hard (optional)',
         minimum: 1,
         maximum: 4,
+      },
+      frequency: {
+        type: 'number',
+        description:
+          'Repeat frequency: 0=never, 1=daily, 2=weekly, etc. Special values: -1=Unlimited, -3=Ebbinghaus, -4=Monthly, -5=Yearly.',
       },
       exp_set_type: {
         type: 'string',
