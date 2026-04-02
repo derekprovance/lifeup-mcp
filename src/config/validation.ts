@@ -117,7 +117,7 @@ export const TaskHistorySchema = z.object({
 });
 
 export const GetTaskDetailsSchema = z.object({
-  id: z.number().int().positive('Task ID must be positive'),
+  taskId: z.number().int().positive('Task ID must be positive'),
 });
 
 export const AchievementMatchSchema = z.object({
@@ -297,7 +297,7 @@ export const EditTaskSchema = z
 
 // Delete Task Schema
 export const DeleteTaskSchema = z.object({
-  id: z.number().int().positive('Task ID must be positive'),
+  taskId: z.number().int().positive('Task ID must be positive'),
 });
 
 // Item Effect Schema
